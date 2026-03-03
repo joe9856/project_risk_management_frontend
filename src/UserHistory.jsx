@@ -181,7 +181,7 @@ export default function UserHistory({ user, addToast }) {
                             disabled={isExporting}
                             style={{ flex: 1, padding: '1rem', borderRadius: '1rem', border: '1px solid #3b82f6', background: 'transparent', color: '#2563eb', fontWeight: 'bold', cursor: isExporting ? 'not-allowed' : 'pointer' }}
                         >
-                            {isExporting ? 'กำลังเตรียม...' : '📄 ส่งออก PDF'}
+                            {isExporting ? 'กำลังเตรียม...' : ' ส่งออก PDF'}
                         </button>
                         <button
                             onClick={onClose}
