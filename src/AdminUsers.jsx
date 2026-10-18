@@ -29,7 +29,7 @@ export default function AdminUsers({ addToast }) {
         try {
             const res = await createAdminUser(newUser);
             if (res.success) {
-                addToast("สร้างสำเร็จ", `ผู้ใช้งาน ${newUser.name} ถูกสร้างแล้ว รหัสผ่านคือ: ${newUser.password || '123456'}`, "success");
+                addToast("สร้างสำเร็จ", `สร้างผู้ใช้งาน ${newUser.name} แล้ว`, "success");
                 setIsAddingNew(false);
                 setNewUser({ name: '', email: '', password: '', role: 'user' });
                 fetchUsers();
@@ -148,9 +148,9 @@ export default function AdminUsers({ addToast }) {
                                 />
                             </div>
                             <div style={{ marginBottom: "1rem" }}>
-                                <label style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>รหัสผ่าน (ถ้าว่างจะเป็น 123456)</label>
+                                <label style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>รหัสผ่าน (อย่างน้อย 8 ตัวอักษร)</label>
                                 <input
-                                    type="password" value={newUser.password}
+                                    type="password" required minLength={8} value={newUser.password}
                                     onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                                     style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0" }}
                                 />
