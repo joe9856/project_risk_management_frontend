@@ -21,10 +21,12 @@ Vite Proxy ส่ง `/api` ไป `127.0.0.1:9997` เฉพาะตอนพ�
 - Redeploy หลังเปลี่ยน Environment
 - อย่าใส่ `DATABASE_URL`, JWT secret หรือ Gemini key ในตัวแปรชื่อขึ้นต้น `VITE_`
 
-Backend Express อยู่บน Vercel ส่วนฐานข้อมูล PostgreSQL อยู่บน Supabase
+เป้าหมายการเผยแพร่คือ Backend Express บน Vercel และฐานข้อมูล PostgreSQL บน Supabase
+ซอร์ส Backend อยู่ที่ `joe9856/project_risk_management` ใน branch `codex/vercel-supabase`
 รายละเอียด Schema, Server Secrets และข้อจำกัดการย้ายข้อมูลอยู่ใน
 `../risk-management-api/README.md`
 
 การแก้ในสำเนานี้: เปลี่ยน API base URL เป็น Environment, เอาแพ็กเกจที่ไม่ได้ใช้
 ซึ่งชนกับ React 19 ออก, ปรับ Admin ไม่แสดงรหัสผ่านใน Toast และต้องระบุรหัสผ่าน
-อย่างน้อย 8 ตัวอักษร ยังไม่ Push กลับ GitHub และยังไม่ Deploy Cloud
+อย่างน้อย 8 ตัวอักษร โค้ดที่เตรียมย้ายอยู่ใน branch `codex/vercel-supabase`
+และยังไม่ได้ Deploy Cloud หรือย้ายข้อมูล Railway
