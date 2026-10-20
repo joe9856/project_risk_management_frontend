@@ -3,6 +3,8 @@ import Login from "./Login";
 import Register from "./Register";
 import UserHistory from "./UserHistory";
 import AdminUsers from "./AdminUsers";
+import { Brand, Icon, userMessage } from "./UI";
+import RiskMatrix from "./RiskMatrix";
 import { saveRisk, getAIAnalysis } from "./api";
 // import { thaiFontBase64 } from "./thaiFont"; // ❌ ไม่ต้องใช้แบบยาวๆ แล้ว
 import { Bar } from "react-chartjs-2";
@@ -15,40 +17,8 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import html2canvas from "html2canvas";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
-
-// SVG Icons
-const Icons = {
-  Threat: () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" />
-    </svg>
-  ),
-  Vulnerability: () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
-    </svg>
-  ),
-  Technical: () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
-    </svg>
-  ),
-  Business: () => (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2v20" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-    </svg>
-  ),
-  Download: () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-    </svg>
-  )
-};
 
 const factorTranslations = {
   skillLevel: "ระดับทักษะ (Skill Level)",
@@ -69,6 +39,33 @@ const factorTranslations = {
   privacyViolation: "การละเมิดความเป็นส่วนตัว (Privacy Violation)"
 };
 
+
+const categories = [
+  { id: 'threatAgent', title: 'ภัยคุกคาม', english: 'Threat Agent', description: 'ประเมินความสามารถและแรงจูงใจของผู้ที่อาจโจมตีระบบ', factors: ['skillLevel', 'motive', 'opportunity', 'size'] },
+  { id: 'vulnerability', title: 'ช่องโหว่', english: 'Vulnerability', description: 'พิจารณาว่าช่องโหว่ถูกค้นพบและนำไปใช้โจมตีได้ง่ายเพียงใด', factors: ['easeOfDiscovery', 'easeOfExploit', 'awareness', 'intrusionDetection'] },
+  { id: 'technicalImpact', title: 'ผลกระทบทางเทคนิค', shortTitle: 'เทคนิค', english: 'Technical Impact', description: 'พิจารณาผลกระทบต่อข้อมูลและความพร้อมใช้งานของระบบ', factors: ['lossOfConfidentiality', 'lossOfIntegrity', 'lossOfAvailability', 'lossOfAccountability'] },
+  { id: 'businessImpact', title: 'ผลกระทบทางธุรกิจ', shortTitle: 'ธุรกิจ', english: 'Business Impact', description: 'ประเมินผลที่อาจเกิดขึ้นต่อองค์กรและผู้ได้รับผลกระทบ', factors: ['financialDamage', 'reputationDamage', 'nonCompliance', 'privacyViolation'] },
+];
+const factorHints = {
+  skillLevel: 'ทักษะและความรู้ของผู้โจมตี',
+  motive: 'ประโยชน์หรือแรงจูงใจในการโจมตี',
+  opportunity: 'โอกาสและทรัพยากรที่ใช้เข้าถึงระบบ',
+  size: 'จำนวนผู้ที่มีโอกาสโจมตีระบบ',
+  easeOfDiscovery: 'ความง่ายในการค้นพบช่องโหว่',
+  easeOfExploit: 'ความง่ายในการใช้ช่องโหว่เพื่อโจมตี',
+  awareness: 'ช่องโหว่นี้เป็นที่รู้จักมากเพียงใด',
+  intrusionDetection: 'ความยากในการตรวจพบการโจมตี',
+  lossOfConfidentiality: 'ขอบเขตของข้อมูลที่อาจถูกเปิดเผย',
+  lossOfIntegrity: 'ผลกระทบเมื่อข้อมูลถูกแก้ไข',
+  lossOfAvailability: 'ผลกระทบเมื่อระบบไม่พร้อมใช้งาน',
+  lossOfAccountability: 'ความยากในการระบุผู้รับผิดชอบเหตุการณ์',
+  financialDamage: 'ความสูญเสียด้านรายได้หรือค่าใช้จ่าย',
+  reputationDamage: 'ความเสียหายต่อชื่อเสียงและความเชื่อมั่น',
+  nonCompliance: 'ผลกระทบจากการไม่ปฏิบัติตามข้อกำหนด',
+  privacyViolation: 'ผลกระทบต่อความเป็นส่วนตัวของบุคคล',
+};
+const scoreOptions = [[0, 'ไม่มีความเสี่ยง'], [1, 'ต่ำ'], [3, 'ค่อนข้างต่ำ'], [5, 'ปานกลาง'], [7, 'ค่อนข้างสูง'], [9, 'สูง']];
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -78,13 +75,17 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [aiResponse, setAiResponse] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [activeStep, setActiveStep] = useState(0);
+  const [answered, setAnswered] = useState({});
+  const [assessmentTitle, setAssessmentTitle] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     const token = localStorage.getItem('token');
     if (savedUser && token) {
-      setUser(JSON.parse(savedUser));
-      setIsLoggedIn(true);
+      try { setUser(JSON.parse(savedUser)); setIsLoggedIn(true); }
+      catch { localStorage.removeItem('user'); localStorage.removeItem('token'); }
     }
   }, []);
 
@@ -118,6 +119,10 @@ export default function App() {
 
   // ฟังก์ชันรีเซ็ตค่าทั้งหมด
   const resetAllScores = () => {
+    setAnswered({});
+    setActiveStep(0);
+    setAssessmentTitle('');
+    setAiResponse(null);
     setScores({
       threatAgent: { skillLevel: 0, motive: 0, opportunity: 0, size: 0 },
       vulnerability: { easeOfDiscovery: 0, easeOfExploit: 0, awareness: 0, intrusionDetection: 0 },
@@ -128,6 +133,8 @@ export default function App() {
 
   // ฟังก์ชันรีเซ็ตรายหมวดหมู่
   const resetCategoryScore = (category) => {
+    setAnswered(prev => Object.fromEntries(Object.entries(prev).filter(([key]) => !key.startsWith(category + '.'))));
+    setAiResponse(null);
     const defaultValues = {
       threatAgent: { skillLevel: 0, motive: 0, opportunity: 0, size: 0 },
       vulnerability: { easeOfDiscovery: 0, easeOfExploit: 0, awareness: 0, intrusionDetection: 0 },
@@ -175,13 +182,14 @@ export default function App() {
   // ฟังก์ชันส่งออก PDF
   // ฟังก์ชันบันทึกข้อมูลเข้าฐานข้อมูล
   const handleSaveRisk = async () => {
-    const riskLevelLabel = calculateRisk().label.split(' ')[0]; // ดึงคำว่า 'ความเสี่ยงต่ำ'
+    if (isSaving) return;
+    setIsSaving(true);
 
     const likelihoodRaw = (calculateTotal("threatAgent") + calculateTotal("vulnerability")) / 8;
     const impactRaw = (calculateTotal("technicalImpact") + calculateTotal("businessImpact")) / 8;
 
     const riskData = {
-      title: `OWASP Assessment - ${new Date().toLocaleString()}`,
+      title: assessmentTitle.trim() || `OWASP Assessment - ${new Date().toLocaleString('th-TH')}`,
       description: JSON.stringify(scores),
       likelihood: Math.min(5, Math.max(1, Math.ceil(likelihoodRaw / 1.8))),
       impact: Math.min(5, Math.max(1, Math.ceil(impactRaw / 1.8))),
@@ -195,11 +203,11 @@ export default function App() {
         addToast("บันทึกสำเร็จ", "ข้อมูลความเสี่ยงของคุณถูกบันทึกลงฐานข้อมูลแล้ว", "success");
         resetAllScores(); // ✅ รีเซ็ตค่าทั้งหมดหลังจากบันทึกสำเร็จ
       } else {
-        addToast("บันทึกไม่สำเร็จ", result.message || "เกิดข้อผิดพลาดในการบันทึก", "error");
+        addToast("บันทึกไม่สำเร็จ", userMessage(result.message, "เกิดข้อผิดพลาดในการบันทึก"), "error");
       }
     } catch (error) {
-      addToast("Error", "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้", "error");
-    }
+      addToast("เชื่อมต่อไม่ได้", "กรุณาลองบันทึกอีกครั้ง ข้อมูลที่กรอกยังอยู่ครบ", "error");
+    } finally { setIsSaving(false); }
   };
 
   const handleAIAnalysis = async () => {
@@ -221,7 +229,7 @@ export default function App() {
         setAiResponse(result.data);
         addToast("AI Analysis Complete", "ระบบ AI วิเคราะห์ข้อมูลเสร็จสมบูรณ์แล้ว", "success");
       } else {
-        addToast("AI Error", result.message || "เกิดข้อผิดพลาดในการวิเคราะห์", "error");
+        addToast("วิเคราะห์ไม่สำเร็จ", userMessage(result.message, "เกิดข้อผิดพลาดในการวิเคราะห์"), "error");
       }
     } catch (error) {
       addToast("Connection Error", "ไม่สามารถเชื่อมต่อกับระบบ AI ได้", "error");
@@ -231,7 +239,13 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
+    if (Object.keys(answered).length && !window.confirm('มีการประเมินที่ยังไม่บันทึก ต้องการออกจากระบบและล้างแบบร่าง?')) return;
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    resetAllScores();
+    setCurrentView('dashboard');
+    setCurrentPage('login');
+    setToasts([]);
     setIsLoggedIn(false);
     setUser(null);
   };
@@ -245,14 +259,16 @@ export default function App() {
     try {
       setIsExporting(true);
 
+      const [{ default: jsPDF }, { default: autoTable }, { default: html2canvas }] = await Promise.all([import('jspdf'), import('jspdf-autotable'), import('html2canvas')]);
       const doc = new jsPDF('p', 'mm', 'a4');
 
-      // 1. โหลดฟอนต์ไทยจาก Cloud แบบ Dynamic
-      const fontUrl = 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/sarabun/Sarabun-Regular.ttf';
+      // The licensed Thai report font ships with the frontend.
+      const fontUrl = '/fonts/Sarabun-Regular.ttf';
 
       let base64Font = '';
       try {
-        const response = await fetch(fontUrl);
+        const response = await fetch(fontUrl, { signal: AbortSignal.timeout(10000) });
+        if (!response.ok) throw new Error('Report font is unavailable');
         const buffer = await response.arrayBuffer();
 
         // แปลง Buffer เป็น Base64 แบบปลอดภัย (รองรับไฟล์ขนาดใหญ่)
@@ -350,29 +366,13 @@ export default function App() {
 
   const handleChange = (event, category, factor) => {
     const value = parseInt(event.target.value);
+    setAnswered(prev => ({ ...prev, [category + '.' + factor]: true }));
+    setAiResponse(null);
     setScores(prev => ({
       ...prev,
       [category]: { ...prev[category], [factor]: value }
     }));
   };
-
-  const RiskFactorDropdown = ({ category, factor }) => (
-    <div className="factor-group">
-      <label className="factor-label">{factorTranslations[factor] || factor}</label>
-      <select
-        className="styled-select"
-        onChange={(e) => handleChange(e, category, factor)}
-        value={scores[category][factor]}
-      >
-        <option value={0}>0 - ไม่มีความเสี่ยง (No Risk)</option>
-        <option value={1}>1 - ต่ำ (Low)</option>
-        <option value={3}>3 - ปานกลางค่อนข้างต่ำ (Medium-Low)</option>
-        <option value={5}>5 - ปานกลาง (Medium)</option>
-        <option value={7}>7 - ปานกลางค่อนข้างสูง (Medium-High)</option>
-        <option value={9}>9 - สูง (High)</option>
-      </select>
-    </div>
-  );
 
   const riskResult = calculateRisk();
 
@@ -380,94 +380,12 @@ export default function App() {
   const matrixLh = Math.min(5, Math.max(1, Math.ceil(((calculateTotal("threatAgent") + calculateTotal("vulnerability")) / 8) / 1.8)));
   const matrixIm = Math.min(5, Math.max(1, Math.ceil(((calculateTotal("technicalImpact") + calculateTotal("businessImpact")) / 8) / 1.8)));
 
-  const getRecommendation = (level, currentScores) => {
-    const totals = {
-      "Threat": calculateTotal("threatAgent"),
-      "Vulnerability": calculateTotal("vulnerability"),
-      "Technical": calculateTotal("technicalImpact"),
-      "Business": calculateTotal("businessImpact")
-    };
-
-    const maxCat = Object.keys(totals).reduce((a, b) => totals[a] > totals[b] ? a : b);
-    const catAdvice = {
-      "Threat": "เน้นการเฝ้าระวังตัวตนผู้เข้าใช้งาน แนะนำให้ใช้ MFA หรือระบบจำกัดสิทธิ์ (Privileged Access Management)",
-      "Vulnerability": "เน้นการอัปเดตช่องโหว่ทางเทคนิค แนะนำให้จัดทำ Vulnerability Assessment และ Patch Management โดยด่วน",
-      "Technical": "เน้นการป้องกันความถูกต้องและความลับของข้อมูล แนะนำให้ใช้ระบบเข้ารหัส (Encryption) และ Backup ข้อมูลแบบออฟไลน์",
-      "Business": "เน้นความเสียหายด้านชื่อเสียงและค่าปรับ แนะนำให้เตรียมแผนตอบสนองต่อเหตุการณ์ (Incident Response Plan) และประกันภัยไซเบอร์"
-    };
-
-    const baseAdvice = {
-      'Critical': {
-        title: "🆘 AI ระบบวิเคราะห์: พบความเสี่ยงระดับวิกฤต!",
-        action: "ต้องปิดกั้นเส้นทางการโจมตีทันที และทำการแก้ไขช่องโหว่ภายใน 24 ชม.",
-        icon: "🚨"
-      },
-      'High': {
-        title: "⚠️ AI ระบบวิเคราะห์: พบความเสี่ยงระดับสูง",
-        action: "ให้จัดลำดับความสำคัญของช่องโหว่นี้เป็นระดับสูงสุดในแผนปฏิบัติงานถัดไป",
-        icon: "⚠️"
-      },
-      'Medium': {
-        title: "🔔 AI ระบบวิเคราะห์: ความเสี่ยงระดับปานกลาง",
-        action: "ควรติดตามและเฝ้าระวังอย่างใกล้ชิดในรอบการตรวจสอบระบบประจำเดือน",
-        icon: "ℹ️"
-      },
-      'Low': {
-        title: "✅ AI ระบบวิเคราะห์: ความเสี่ยงระดับต่ำ",
-        action: "รักษามาตรการความปลอดภัยเดิมและหมั่นตรวจสอบระบบตามมาตรฐาน",
-        icon: "✅"
-      }
-    };
-
-    const core = baseAdvice[level] || baseAdvice['Low'];
-    return {
-      ...core,
-      analysis: `จากการวิเคราะห์ด้วย AI พบว่าปัจจัยหลักที่ขับเคลื่อนความเสี่ยงคือ **${maxCat}** (${totals[maxCat]} คะแนน)`,
-      tip: catAdvice[maxCat]
-    };
-  };
-
-  const reco = getRecommendation(riskResult.label.split(' ')[1] || 'Low', scores);
-
-  const RiskMatrix = () => {
-    return (
-      <div className="matrix-container">
-        <h4 style={{ textAlign: 'center', marginBottom: '1rem', color: '#1e293b' }}>แผนภูมิความร้อน (Risk Heatmap)</h4>
-        <div className="matrix-grid">
-          {[5, 4, 3, 2, 1].map(row => (
-            <div key={row} className="matrix-row">
-              <div className="matrix-label-y">{row}</div>
-              {[1, 2, 3, 4, 5].map(col => {
-                const score = row * col;
-                const isCurrent = row === matrixIm && col === matrixLh;
-                let bgColor = '#dcfce7'; // Low
-                if (score >= 20) bgColor = '#fee2e2'; // Critical/High
-                else if (score >= 12) bgColor = '#ffedd5'; // Medium-High
-                else if (score >= 6) bgColor = '#fef9c3'; // Medium
-
-                return (
-                  <div
-                    key={col}
-                    className={`matrix-cell ${isCurrent ? 'active' : ''}`}
-                    style={{ background: bgColor }}
-                  >
-                    {isCurrent && <div className="matrix-pulsar" />}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-          <div className="matrix-row label-row">
-            <div className="matrix-label-corner"></div>
-            {[1, 2, 3, 4, 5].map(col => <div key={col} className="matrix-label-x">{col}</div>)}
-          </div>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b', marginTop: '1.2rem' }}>
-          <span>แกนนอน (L): โอกาสเกิด</span>
-          <span>แกนตั้ง (I): ผลกระทบ</span>
-        </div>
-      </div>
-    );
+  const completed = Object.keys(answered).length;
+  const totalScore = categories.reduce((sum, item) => sum + calculateTotal(item.id), 0);
+  const isComplete = completed === 16;
+  const changeStep = (step) => {
+    setActiveStep(step);
+    document.getElementById('assessment-form')?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   };
 
   if (!isLoggedIn) {
@@ -477,230 +395,95 @@ export default function App() {
   }
 
   return (
-    <div className="dashboard-container" style={{ paddingTop: '5rem' }}>
-      <div style={{
-        position: 'fixed', top: 0, left: 0, right: 0, height: '4rem',
-        background: 'white', borderBottom: '1px solid #e2e8f0', display: 'flex',
-        justifyContent: 'space-between', alignItems: 'center', padding: '0 2rem', zIndex: 100
-      }}>
-        <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-          <h3 style={{ color: '#2563eb', margin: 0 }}>Risk Assessment</h3>
-          <nav style={{ display: 'flex', gap: '1rem' }}>
-            <button
-              onClick={() => setCurrentView('dashboard')}
-              style={{ background: 'none', border: 'none', color: currentView === 'dashboard' ? '#2563eb' : '#64748b', fontWeight: currentView === 'dashboard' ? 'bold' : 'normal', cursor: 'pointer' }}
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => setCurrentView('history')}
-              style={{ background: 'none', border: 'none', color: currentView === 'history' ? '#2563eb' : '#64748b', fontWeight: currentView === 'history' ? 'bold' : 'normal', cursor: 'pointer' }}
-            >
-              My History
-            </button>
-            {/* ✅ แสดงเมนู Admin เฉพาะคนที่เป็น admin */}
-            {user?.role === 'admin' && (
-              <button
-                onClick={() => setCurrentView('admin-users')}
-                style={{ background: 'none', border: 'none', color: currentView === 'admin-users' ? '#2563eb' : '#64748b', fontWeight: currentView === 'admin-users' ? 'bold' : 'normal', cursor: 'pointer' }}
-              >
-                User Management
-              </button>
-            )}
-          </nav>
+    <div className="workspace">
+      <a className="skip-link" href="#main-content">ข้ามไปเนื้อหา</a>
+      <aside className="sidebar" aria-label="เมนูหลัก">
+        <Brand/>
+        <div className="sidebar-label">พื้นที่ทำงาน</div>
+        <nav className="main-nav">
+          <button className={currentView === 'dashboard' ? 'nav-item selected' : 'nav-item'} aria-current={currentView === 'dashboard' ? 'page' : undefined} onClick={() => setCurrentView('dashboard')}><Icon name="grid"/><span>ประเมินความเสี่ยง</span></button>
+          <button className={currentView === 'history' ? 'nav-item selected' : 'nav-item'} aria-current={currentView === 'history' ? 'page' : undefined} onClick={() => setCurrentView('history')}><Icon name="history"/><span>ประวัติการประเมิน</span></button>
+          {user?.role === 'admin' && <button className={currentView === 'admin-users' ? 'nav-item selected' : 'nav-item'} aria-current={currentView === 'admin-users' ? 'page' : undefined} onClick={() => setCurrentView('admin-users')}><Icon name="users"/><span>จัดการผู้ใช้งาน</span></button>}
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="sidebar-guide"><Icon name="shield" size={23}/><strong>ประเมินให้ครบ มองเห็นได้ชัด</strong><p>เลือกคะแนนทั้ง 16 ปัจจัย<br/>เพื่อสรุปผลและบันทึกรายงาน</p></div>
+          <button className="logout-button" onClick={handleLogout} aria-label="ออกจากระบบ"><Icon name="logout" size={18}/><span>ออกจากระบบ</span></button>
         </div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.9rem', color: '#64748b' }}>
-            สวัสดี, <strong style={{ color: '#1e293b' }}>{user?.name}</strong>
-            <span style={{ marginLeft: '10px', padding: '2px 8px', borderRadius: '12px', background: user?.role === 'admin' ? '#fee2e2' : '#e0f2fe', color: user?.role === 'admin' ? '#ef4444' : '#0369a1', fontSize: '0.75rem', fontWeight: 'bold' }}>{user?.role?.toUpperCase()}</span>
-          </span>
-          <button onClick={handleLogout} style={{ padding: '0.5rem 1.25rem', borderRadius: '0.75rem', background: 'transparent', color: '#ef4444', border: '1px solid #fee2e2', cursor: 'pointer', fontSize: '0.9rem' }}>Logout</button>
-        </div>
-      </div>
-
-      {currentView === 'history' ? (
-        <UserHistory user={user} addToast={addToast} />
-      ) : currentView === 'admin-users' ? (
-        <AdminUsers addToast={addToast} />
-      ) : (
-        <>
-          <header className="header-section">
-            <div className="premium-badge">มาตรฐาน OWASP Framework 2024</div>
-            <h1>การประเมินความเสี่ยงด้านความปลอดภัยขั้นสูง</h1>
-            <p>เครื่องมือวิเคราะห์และจัดการความเสี่ยงระดับองค์กร (Enterprise Edition)</p>
-          </header>
-
-
-          <div className="grid-layout">
-            <div className="risk-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h3 style={{ margin: 0 }}><Icons.Threat /> ปัจจัยจากคุกคาม (Threat Agent)</h3>
-                <button onClick={() => resetCategoryScore("threatAgent")} className="btn-reset-small">รีเซ็ต</button>
-              </div>
-              {["skillLevel", "motive", "opportunity", "size"].map(f => (
-                <RiskFactorDropdown key={f} category="threatAgent" factor={f} />
-              ))}
+      </aside>
+      <div className="workspace-body">
+        <header className="workspace-topbar">
+          <div className="breadcrumb"><span>พื้นที่ทำงาน</span><Icon name="chevron" size={14}/><strong>{currentView === 'dashboard' ? 'ประเมินความเสี่ยง' : currentView === 'history' ? 'ประวัติการประเมิน' : 'จัดการผู้ใช้งาน'}</strong></div>
+          <div className="account"><span className="account-avatar">{user?.name?.slice(0, 1) || 'U'}</span><div><strong>{user?.name}</strong><small>{user?.role === 'admin' ? 'ผู้ดูแลระบบ' : 'บัญชีส่วนตัว'}</small></div></div>
+        </header>
+        <main className="workspace-content" id="main-content">
+          {currentView === 'history' ? <UserHistory user={user} addToast={addToast} onNewAssessment={() => setCurrentView('dashboard')}/> : currentView === 'admin-users' ? <AdminUsers addToast={addToast}/> : <>
+            <div className="page-heading">
+              <div><span className="eyebrow">OWASP RISK ASSESSMENT</span><h1>ประเมินความเสี่ยง</h1><p>ทำความเข้าใจความเสี่ยงทีละส่วน แล้ววางแผนรับมืออย่างมั่นใจ</p></div>
+              <button className="button button-secondary reset-all" onClick={() => { if (!completed || window.confirm('ล้างคะแนนที่กรอกทั้งหมดและเริ่มการประเมินใหม่?')) resetAllScores(); }}><Icon name="reset" size={17}/> เริ่มใหม่</button>
             </div>
-
-            <div className="risk-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h3 style={{ margin: 0 }}><Icons.Vulnerability /> ช่องโหว่ (Vulnerability)</h3>
-                <button onClick={() => resetCategoryScore("vulnerability")} className="btn-reset-small">รีเซ็ต</button>
-              </div>
-              {["easeOfDiscovery", "easeOfExploit", "awareness", "intrusionDetection"].map(f => (
-                <RiskFactorDropdown key={f} category="vulnerability" factor={f} />
-              ))}
+            <div className="score-strip" aria-label="ภาพรวมคะแนน">
+              <div><span className="score-strip-icon"><Icon name="file"/></span><div><span>ความคืบหน้า</span><strong>{completed}<small> / 16 ปัจจัย</small></strong></div></div>
+              <div><span>คะแนนโอกาสเกิด</span><strong>{calculateTotal('threatAgent') + calculateTotal('vulnerability')}<small> / 72</small></strong></div>
+              <div><span>คะแนนผลกระทบ</span><strong>{calculateTotal('technicalImpact') + calculateTotal('businessImpact')}<small> / 72</small></strong></div>
+              <div className="score-strip-total"><span>คะแนนรวม</span><strong>{totalScore}<small> / 144</small></strong></div>
             </div>
-
-            <div className="risk-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h3 style={{ margin: 0 }}><Icons.Technical /> ผลกระทบทางเทคนิค (Technical Impact)</h3>
-                <button onClick={() => resetCategoryScore("technicalImpact")} className="btn-reset-small">รีเซ็ต</button>
-              </div>
-              {["lossOfConfidentiality", "lossOfIntegrity", "lossOfAvailability", "lossOfAccountability"].map(f => (
-                <RiskFactorDropdown key={f} category="technicalImpact" factor={f} />
-              ))}
-            </div>
-
-            <div className="risk-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h3 style={{ margin: 0 }}><Icons.Business /> ผลกระทบทางธุรกิจ (Business Impact)</h3>
-                <button onClick={() => resetCategoryScore("businessImpact")} className="btn-reset-small">รีเซ็ต</button>
-              </div>
-              {["financialDamage", "reputationDamage", "nonCompliance", "privacyViolation"].map(f => (
-                <RiskFactorDropdown key={f} category="businessImpact" factor={f} />
-              ))}
-            </div>
-          </div>
-
-          <div className="result-section">
-            <div className={`risk-level-badge ${riskResult.class}`}>
-              {riskResult.label}
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 350px', gap: '2rem', width: '100%', maxWidth: '1100px', alignItems: 'start' }}>
-              <div className="chart-container" style={{ height: '400px' }} ref={chartRef}>
-                <Bar
-                  data={chartData}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { display: false },
-                      title: {
-                        display: true,
-                        text: 'การกระจายคะแนนตามปัจจัยความเสี่ยง (Factor Breakdown)',
-                        color: '#1e293b',
-                        font: { size: 14, weight: 'bold', family: 'Sarabun' }
-                      }
-                    },
-                    scales: {
-                      y: { beginAtZero: true, max: 40, grid: { color: 'rgba(0,0,0,0.05)' } },
-                      x: { grid: { display: false } }
-                    }
-                  }}
-                />
-              </div>
-              <RiskMatrix />
-            </div>
-
-            <div className="ai-section" style={{ marginTop: '2.5rem', width: '100%', maxWidth: '1100px' }}>
-              {!aiResponse ? (
-                <button
-                  className="btn-premium"
-                  onClick={handleAIAnalysis}
-                  disabled={isAnalyzing}
-                  style={{
-                    width: '100%', background: 'linear-gradient(135deg, #6366f1, #a855f7)',
-                    color: 'white', border: 'none', padding: '1.25rem', fontSize: '1.1rem'
-                  }}
-                >
-                  {isAnalyzing ? '🤖 AI กำลังประมวลผลข้อมูลความเสี่ยงของคุณ...' : '🤖 ส่งข้อมูลผลการประเมินให้ระบบ AI วิเคราะห์ขั้นสูง'}
-                </button>
-              ) : (
-                <div className={`reco-board ${riskResult.class}`}>
-                  <div className="reco-header">
-                    <span className="reco-icon">🤖</span>
-                    <strong>ผลการวิเคราะห์เจาะลึกโดย AI</strong>
+            <div className="assessment-layout">
+              <div className="assessment-main">
+                <section className="panel assessment-panel" id="assessment-form" aria-labelledby="assessment-heading">
+                  <div className="assessment-intro"><div><h2 id="assessment-heading">แบบประเมินของคุณ</h2><p>เลือกคะแนนตามสถานการณ์จริง ตั้งแต่ 0 ถึง 9</p></div><span className="step-count">ส่วนที่ {activeStep + 1} / 4</span></div>
+                  <div className="progress-track" role="progressbar" aria-label="ปัจจัยที่ประเมินแล้ว" aria-valuemin={0} aria-valuemax={16} aria-valuenow={completed}><span style={{ width: (completed / 16 * 100) + '%' }}/></div>
+                  <div className="category-tabs" role="tablist" aria-label="หมวดการประเมิน">
+                    {categories.map((item, index) => {
+                      const count = item.factors.filter(f => answered[item.id + '.' + f]).length;
+                      return <button key={item.id} type="button" role="tab" id={'tab-' + item.id} aria-controls={'panel-' + item.id} aria-selected={activeStep === index} tabIndex={activeStep === index ? 0 : -1} className={activeStep === index ? 'category-tab active' : 'category-tab'} onClick={() => setActiveStep(index)} onKeyDown={event => {
+                        if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
+                        event.preventDefault();
+                        const next = event.key === 'Home' ? 0 : event.key === 'End' ? 3 : (index + (event.key === 'ArrowRight' ? 1 : 3)) % 4;
+                        setActiveStep(next);
+                        document.getElementById('tab-' + categories[next].id)?.focus();
+                      }}><span className={count === 4 ? 'tab-number complete' : 'tab-number'}>{count === 4 ? <Icon name="check" size={13}/> : '0' + (index + 1)}</span><span>{item.shortTitle || item.title}<small>{count}/4 ปัจจัย</small></span></button>;
+                    })}
                   </div>
-                  <div className="reco-body">
-                    <p>{aiResponse.summary}</p>
-
-                    <div className="reco-plan">
-                      <strong>📋 แนวทางปฏิบัติที่แนะนำ:</strong>
-                      {aiResponse.recommendations.map((rec, i) => (
-                        <p key={i} style={{ marginBottom: '0.5rem', display: 'flex', gap: '0.5rem' }}>
-                          <span>•</span> {rec}
-                        </p>
-                      ))}
-                    </div>
-
-                    <div className="reco-tip">
-                      <span>💡</span>
-                      <small>AI Insight: {aiResponse.insight}</small>
-                    </div>
-
-                    <button className="reco-footer-btn" onClick={() => setAiResponse(null)}>
-                      ต้องการวิเคราะห์ใหม่ (Clear AI Analysis)
-                    </button>
+                  {categories.map(category => <div key={category.id} hidden={categories[activeStep].id !== category.id} className="category-content" role="tabpanel" id={'panel-' + category.id} aria-labelledby={'tab-' + category.id}>
+                    <div className="category-heading"><div><span className="meta">{category.english}</span><h3>{category.title}</h3><p>{category.description}</p></div><button className="icon-button" onClick={() => resetCategoryScore(category.id)} aria-label={'ล้างคะแนนหมวด' + category.title} title="ล้างคะแนนหมวดนี้"><Icon name="reset" size={17}/></button></div>
+                    <div className="factor-list">{category.factors.map((factor, index) => {
+                      const key = category.id + '.' + factor;
+                      return <div className="factor-row" key={factor}><span className="factor-number">{String(index + 1).padStart(2, '0')}</span><div className="factor-description"><label htmlFor={key}>{factorTranslations[factor].split(' (')[0]}</label><small id={key + '-hint'}>{factorHints[factor]}</small></div><select className={answered[key] ? 'factor-select answered' : 'factor-select'} id={key} aria-describedby={key + '-hint'} value={answered[key] ? scores[category.id][factor] : ''} onChange={event => handleChange(event, category.id, factor)}><option value="" disabled>เลือกคะแนน</option>{scoreOptions.map(([value, label]) => <option value={value} key={value}>{value} — {label}</option>)}</select></div>;
+                    })}</div>
+                  </div>)}
+                  <div className="step-actions"><span className="meta">ข้อมูลที่เลือกจะอยู่ครบเมื่อเปลี่ยนหมวด</span><div><button className="button button-secondary" disabled={activeStep === 0} onClick={() => changeStep(activeStep - 1)}><Icon name="back" size={16}/> ย้อนกลับ</button>{activeStep < 3 ? <button className="button button-primary" onClick={() => changeStep(activeStep + 1)}>หมวดถัดไป <Icon name="arrow" size={16}/></button> : <button className="button button-primary" onClick={() => document.getElementById('assessment-result')?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center' })}>ดูสรุปผล <Icon name="arrow" size={16}/></button>}</div></div>
+                </section>
+                <section className="panel chart-panel" aria-labelledby="chart-heading">
+                  <div className="panel-heading"><div><h2 id="chart-heading">ภาพรวมทั้ง 4 หมวด</h2><p>เปรียบเทียบคะแนนเพื่อดูว่าควรให้ความสำคัญกับส่วนใด</p></div><span className="meta">สูงสุด 36 / หมวด</span></div>
+                  <div className="assessment-chart" ref={chartRef}><Bar data={{...chartData, labels: categories.map(item => item.title), datasets: chartData.datasets.map(dataset => ({ ...dataset, backgroundColor: ['#3765cd', '#6e92e1', '#9ab4ec', '#bfd1f5'], borderWidth: 0, barPercentage: .6 }))}} aria-label="กราฟคะแนนความเสี่ยงทั้งสี่หมวด" role="img" options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 36, ticks: { stepSize: 9 }, grid: { color: '#edf0f5' }, border: { display: false } }, x: { grid: { display: false }, ticks: { font: { family: 'Sarabun', size: 11 }, color: '#62718a' }, border: { display: false } } } }}/></div>
+                </section>
+                <section className="panel ai-panel" aria-labelledby="ai-heading">
+                  <div className="ai-heading"><span className="ai-symbol"><Icon name="spark"/></span><div><h2 id="ai-heading">อีกมุมมองสำหรับแผนรับมือ</h2><p>ให้ AI ช่วยสรุปคะแนนและเสนอแนวทางจัดการความเสี่ยง</p></div></div>
+                  {aiResponse ? <div className="ai-response"><p>{aiResponse.summary}</p><h3>แนวทางที่แนะนำ</h3><ul>{aiResponse.recommendations?.map((rec, index) => <li key={index}>{rec}</li>)}</ul>{aiResponse.insight && <p className="ai-insight">{aiResponse.insight}</p>}<button className="text-button" onClick={() => setAiResponse(null)}>ล้างผลวิเคราะห์ AI</button></div> : <button className="button button-secondary" onClick={handleAIAnalysis} disabled={!isComplete || isAnalyzing}>{isAnalyzing ? <><span className="spinner"/> กำลังวิเคราะห์</> : <><Icon name="spark" size={16}/> วิเคราะห์ด้วย AI</>}</button>}
+                  <small className="field-hint">ผลวิเคราะห์เป็นข้อมูลประกอบการตัดสินใจ ควรตรวจสอบกับบริบทของงาน</small>
+                </section>
+              </div>
+              <aside className="assessment-summary" id="assessment-result" aria-label="สรุปผลการประเมิน">
+                <section className="panel summary-panel">
+                  <div className="panel-heading"><h2>สรุปผลการประเมิน</h2><span className={isComplete ? 'status-label complete' : 'status-label'}>{isComplete ? 'ครบทุกปัจจัย' : 'แบบร่าง'}</span></div>
+                  <div className="total-score"><span>คะแนนรวมจาก 16 ปัจจัย</span><strong>{completed ? totalScore : '—'}<small>/ 144</small></strong><span className={completed ? 'risk-status ' + riskResult.class : 'risk-status unassessed'}>{completed ? riskResult.label.split(' (')[0] : 'รอการประเมิน'}</span></div>
+                  {!isComplete && <p className="summary-hint">ประเมินแล้ว {completed} จาก 16 ปัจจัย<br/>ตอบให้ครบเพื่อบันทึกผลและส่งออกรายงาน</p>}
+                  <RiskMatrix likelihood={matrixLh} impact={matrixIm} hasScore={completed > 0}/>
+                  <details className="score-explanation"><summary><Icon name="info" size={15}/> อ่านคะแนนอย่างไร</summary><p>คะแนนรวม 0–144 มาจากทั้ง 16 ปัจจัย ส่วนเมทริกซ์และรายงานที่บันทึกใช้โอกาสเกิด × ผลกระทบในสเกล 1–5 จึงมีคะแนน 1–25 และระดับความเสี่ยงต่างกันได้</p></details>
+                  <div className="save-assessment">
+                    <label htmlFor="assessment-title">ชื่อการประเมิน <small>(ไม่บังคับ)</small></label><input id="assessment-title" placeholder="เช่น ระบบจัดการข้อมูลลูกค้า" value={assessmentTitle} onChange={event => setAssessmentTitle(event.target.value)} maxLength={200}/>
+                    <button className="button button-primary" onClick={handleSaveRisk} disabled={!isComplete || isSaving}>{isSaving ? <><span className="spinner"/> กำลังบันทึก</> : <><Icon name="check" size={18}/> บันทึกและเริ่มใหม่</>}</button>
+                    <button className="button button-secondary" onClick={exportPDF} disabled={!isComplete || isExporting}>{isExporting ? <><span className="spinner"/> กำลังเตรียมไฟล์</> : <><Icon name="download" size={18}/> ดาวน์โหลด PDF</>}</button>
+                    <small>เมื่อบันทึกแล้ว ดูผลได้ในประวัติการประเมิน</small>
                   </div>
-                </div>
-              )}
+                </section>
+              </aside>
             </div>
-
-            <div className="stats-row" style={{ marginTop: '2rem' }}>
-              <div className="stat-card">
-                <div className="stat-value">{calculateTotal("threatAgent") + calculateTotal("vulnerability")}</div>
-                <div className="stat-label">คะแนนโอกาสเกิด (Likelihood)</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-value">{calculateTotal("technicalImpact") + calculateTotal("businessImpact")}</div>
-                <div className="stat-label">คะแนนผลกระทบ (Impact)</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-value">{(calculateTotal("threatAgent") + calculateTotal("vulnerability") + calculateTotal("technicalImpact") + calculateTotal("businessImpact")).toFixed(1)}</div>
-                <div className="stat-label">ความรุนแรงโดยรวม (Severity)</div>
-              </div>
-            </div>
-
-            <div className="action-buttons" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-              <button className="btn-premium btn-primary-premium" onClick={handleSaveRisk}>
-                <Icons.Threat /> บันทึกและล้างค่า (Save & Reset)
-              </button>
-              <button
-                className="btn-premium"
-                style={{ border: '1px solid #64748b', color: '#64748b', background: 'transparent' }}
-                onClick={resetAllScores}
-              >
-                ล้างค่าทั้งหมด (Clear All)
-              </button>
-              <button
-                className="btn-premium"
-                style={{ border: '1px solid #3b82f6', background: isExporting ? '#f1f5f9' : 'transparent', cursor: isExporting ? 'not-allowed' : 'pointer' }}
-                onClick={exportPDF}
-                disabled={isExporting}
-              >
-                <Icons.Download /> {isExporting ? 'กำลังเตรียมไฟล์...' : 'ส่งออกรายงาน PDF (Export PDF Report)'}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* 🚀 New Premium Toast Notification System */}
-      <div className="toast-container">
-        {toasts.map(toast => (
-          <div key={toast.id} className={`toast-item ${toast.type}`}>
-            <div className="toast-icon">
-              {toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}
-            </div>
-            <div className="toast-content">
-              <div className="toast-title">{toast.title}</div>
-              <div className="toast-message">{toast.message}</div>
-            </div>
-          </div>
-        ))}
+            <footer className="workspace-footer"><span>Risk Management Workspace</span><span>ประเมินความเสี่ยงอย่างเป็นขั้นตอน</span></footer>
+          </>}
+        </main>
       </div>
+      <div className="toast-container" aria-live="polite" aria-atomic="false">{toasts.map(toast => <div key={toast.id} className={'toast-item ' + toast.type} role={toast.type === 'error' ? 'alert' : 'status'}><span className="toast-icon"><Icon name={toast.type === 'success' ? 'check' : 'info'}/></span><div className="toast-content"><strong>{toast.title}</strong><p>{toast.message}</p></div><button className="icon-button" aria-label="ปิดการแจ้งเตือน" onClick={() => setToasts(prev => prev.filter(item => item.id !== toast.id))}><Icon name="close" size={16}/></button></div>)}</div>
     </div>
   );
 }

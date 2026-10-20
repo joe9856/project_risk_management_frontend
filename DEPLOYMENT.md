@@ -22,11 +22,15 @@ Vite Proxy ส่ง `/api` ไป `127.0.0.1:9997` เฉพาะตอนพ�
 - อย่าใส่ `DATABASE_URL`, JWT secret หรือ Gemini key ในตัวแปรชื่อขึ้นต้น `VITE_`
 
 เป้าหมายการเผยแพร่คือ Backend Express บน Vercel และฐานข้อมูล PostgreSQL บน Supabase
-ซอร์ส Backend อยู่ที่ `joe9856/project_risk_management` ใน branch `codex/vercel-supabase`
+ซอร์ส Backend อยู่ที่ `joe9856/project_risk_management` ใน branch `main`
 รายละเอียด Schema, Server Secrets และข้อจำกัดการย้ายข้อมูลอยู่ใน
 `../risk-management-api/README.md`
 
-การแก้ในสำเนานี้: เปลี่ยน API base URL เป็น Environment, เอาแพ็กเกจที่ไม่ได้ใช้
-ซึ่งชนกับ React 19 ออก, ปรับ Admin ไม่แสดงรหัสผ่านใน Toast และต้องระบุรหัสผ่าน
-อย่างน้อย 8 ตัวอักษร โค้ดที่เตรียมย้ายอยู่ใน branch `codex/vercel-supabase`
-และยังไม่ได้ Deploy Cloud หรือย้ายข้อมูล Railway
+## ส่วนติดต่อผู้ใช้
+
+- แบบประเมินแบ่งเป็น 4 หมวด เก็บคำตอบเมื่อสลับหมวด และนับคะแนน 0 เป็นคำตอบ
+- ตอบครบ 16 ปัจจัยก่อนบันทึก ส่งออก PDF หรือเรียกวิเคราะห์ AI
+- สูตรคะแนนเดิมยังคงอยู่: ผลรวม 0–144 และคะแนนเมทริกซ์/ข้อมูลที่บันทึก 1–25
+- ประวัติค้นหาในรายการที่โหลดมาได้ พร้อมรายละเอียดและ PDF
+- ไลบรารี PDF โหลดเมื่อใช้งาน ฟอนต์รายงานอยู่ใน `public/fonts/` พร้อม OFL license
+- หน้าบ้านและหลังบ้าน Deploy แยกกัน การปรับ UI ไม่เปลี่ยนฐานข้อมูลหรือ Server Secrets

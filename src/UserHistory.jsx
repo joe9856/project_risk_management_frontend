@@ -1,57 +1,51 @@
-import { useState, useEffect } from "react";
-import { getActivities } from "./api";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import { useState, useEffect } from 'react';
+import { getActivities } from './api';
+import { Dialog, Icon } from './UI';
 
-const factorTranslations = {
-    sl: "ความสามารถในการเข้าถึง (Skill Level)",
-    m: "แรงจูงใจ (Motive)",
-    o: "โอกาส (Opportunity)",
-    s: "ขนาด (Size)",
-    ee: "ความง่ายในการค้นพบ (Ease of Discovery)",
-    es: "ความง่ายในการโจมตี (Ease of Exploit)",
-    a: "ความตระหนักรู้ (Awareness)",
-    id: "การตรวจจับ (Intrusion Detection)",
-    lc: "การสูญเสียความลับ (Confidentiality)",
-    li: "การสูญเสียความถูกต้อง (Integrity)",
-    lav: "การสูญเสียความพร้อมใช้ (Availability)",
-    lac: "การสูญเสียความรับผิดชอบ (Accountability)",
-    fd: "ความเสียหายทางการเงิน (Financial)",
-    rd: "ความเสียหายต่อชื่อเสียง (Reputation)",
-    nc: "การไม่ปฏิบัติตามกฎระเบียบ (Compliance)",
-    pv: "การละเมิดความเป็นส่วนตัว (Privacy)"
+const actionLabels = { CREATE_RISK: 'บันทึกการประเมิน', UPDATE_RISK: 'แก้ไขการประเมิน', DELETE_RISK: 'ลบการประเมิน', LOGIN: 'เข้าสู่ระบบ', REGISTER: 'สร้างบัญชี', CREATE_USER: 'เพิ่มผู้ใช้งาน', UPDATE_USER: 'แก้ไขผู้ใช้งาน', DELETE_USER: 'ลบผู้ใช้งาน' };
+const riskLabels = { Low: 'ต่ำ', Medium: 'ปานกลาง', High: 'สูง', Critical: 'วิกฤต' };
+const categoryLabels = { threatAgent: 'ภัยคุกคาม', vulnerability: 'ช่องโหว่', technicalImpact: 'ผลกระทบทางเทคนิค', businessImpact: 'ผลกระทบทางธุรกิจ' };
+const factorLabels = {
+  skillLevel: 'ระดับทักษะ', motive: 'แรงจูงใจ', opportunity: 'โอกาส', size: 'ขนาดของกลุ่ม',
+  easeOfDiscovery: 'ความง่ายในการค้นหา', easeOfExploit: 'ความง่ายในการโจมตี', awareness: 'ความตระหนักรู้', intrusionDetection: 'ระบบตรวจจับ',
+  lossOfConfidentiality: 'การรักษาความลับ', lossOfIntegrity: 'ความถูกต้องของข้อมูล', lossOfAvailability: 'ความพร้อมใช้งาน', lossOfAccountability: 'ความรับผิดชอบ',
+  financialDamage: 'ความเสียหายทางการเงิน', reputationDamage: 'ความเสียหายต่อชื่อเสียง', nonCompliance: 'การไม่เป็นไปตามข้อกำหนด', privacyViolation: 'การละเมิดความเป็นส่วนตัว'
 };
+function parseDetail(log) {
+  if (!log.detail) return null;
+  if (typeof log.detail !== 'string') return log.detail;
+  try { return JSON.parse(log.detail); } catch { return null; }
+}
+function parseInputs(detail) {
+  if (typeof detail?.inputs !== 'string') return detail?.inputs;
+  try { return JSON.parse(detail.inputs); } catch { return null; }
+}
+function formatDate(value) {
+  return new Date(value).toLocaleString('th-TH', { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
 
-export default function UserHistory({ user, addToast }) {
-    const [logs, setLogs] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedLog, setSelectedLog] = useState(null);
-    const [isExporting, setIsExporting] = useState(false);
-
-    useEffect(() => {
-        const fetchLogs = async () => {
-            try {
-                const response = await getActivities();
-                if (response.success) {
-                    setLogs(response.data);
-                }
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchLogs();
-    }, []);
-
-    const parseDetail = (log) => {
-        if (!log.detail) return null;
-        let detail = log.detail;
-        if (typeof detail === 'string') {
-            try { detail = JSON.parse(detail); } catch (e) { return null; }
-        }
-        return detail;
-    };
+export default function UserHistory({ user, addToast, onNewAssessment }) {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
+  const [search, setSearch] = useState('');
+  const [selectedLog, setSelectedLog] = useState(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [total, setTotal] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+    getActivities().then(response => {
+      if (!active) return;
+      if (!response.success) throw new Error(response.message || 'โหลดประวัติไม่สำเร็จ');
+      setLogs(response.data);
+      setTotal(response.pagination?.total ?? response.data.length);
+    }).catch(error => { if (active) setError(error.message || 'เชื่อมต่อไม่ได้ กรุณาลองใหม่'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [retry]);
 
     const exportLogPDF = async (log) => {
         const detail = parseDetail(log);
@@ -59,12 +53,14 @@ export default function UserHistory({ user, addToast }) {
 
         try {
             setIsExporting(true);
+            const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
             const doc = new jsPDF('p', 'mm', 'a4');
-            const fontUrl = 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/sarabun/Sarabun-Regular.ttf';
+            const fontUrl = '/fonts/Sarabun-Regular.ttf';
 
             let base64Font = '';
             try {
-                const response = await fetch(fontUrl);
+                const response = await fetch(fontUrl, { signal: AbortSignal.timeout(10000) });
+                if (!response.ok) throw new Error('Report font is unavailable');
                 const buffer = await response.arrayBuffer();
                 const bytes = new Uint8Array(buffer);
                 let binary = '';
@@ -129,144 +125,26 @@ export default function UserHistory({ user, addToast }) {
         }
     };
 
-    const Modal = ({ log, onClose }) => {
-        const detail = parseDetail(log);
-        if (!detail) return null;
 
-        const result = detail.result;
-        let inputs = detail.inputs;
-        if (typeof inputs === 'string') {
-            try { inputs = JSON.parse(inputs); } catch (e) { }
-        }
+  const filtered = logs.filter(log => ((parseDetail(log)?.title || '') + ' ' + (actionLabels[log.action] || log.action)).toLowerCase().includes(search.toLowerCase()));
+  const detail = selectedLog ? parseDetail(selectedLog) : null;
+  const inputs = parseInputs(detail);
 
-        return (
-            <div className="modal-overlay" onClick={onClose}>
-                <div className="modal-content" onClick={e => e.stopPropagation()}>
-                    <button className="modal-close" onClick={onClose}>✕</button>
-                    <h2 style={{ marginBottom: '1rem', color: '#1e293b' }}> รายละเอียดการประเมิน</h2>
-                    <p style={{ color: '#64748b', marginBottom: '2rem' }}>{detail.title || 'Risk Assessment'}</p>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2rem' }}>
-                        <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '1rem', textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.5rem' }}>ระดับความเสี่ยง</div>
-                            <div style={{
-                                fontSize: '1.5rem', fontWeight: 'bold',
-                                color: result?.risk_level === 'Critical' ? '#ef4444' : '#2563eb'
-                            }}>{result?.risk_level}</div>
-                        </div>
-                        <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '1rem', textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.5rem' }}>คะแนนความเสี่ยง</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981' }}>{result?.score}</div>
-                        </div>
-                    </div>
-
-                    <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: '#1e293b' }}> ปัจจัยที่เลือก (Scores)</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        {inputs && Object.entries(inputs).map(([cat, factors]) => (
-                            <div key={cat} style={{ background: '#f1f5f9', padding: '1rem', borderRadius: '0.75rem' }}>
-                                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#64748b', marginBottom: '0.5rem', textTransform: 'uppercase' }}>{cat}</div>
-                                {Object.entries(factors).map(([f, val]) => (
-                                    <div key={f} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.25rem' }}>
-                                        <span style={{ color: '#475569' }}>{f}:</span>
-                                        <span style={{ fontWeight: 'bold', color: '#1e293b' }}>{val}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        ))}
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-                        <button
-                            onClick={() => exportLogPDF(log)}
-                            disabled={isExporting}
-                            style={{ flex: 1, padding: '1rem', borderRadius: '1rem', border: '1px solid #3b82f6', background: 'transparent', color: '#2563eb', fontWeight: 'bold', cursor: isExporting ? 'not-allowed' : 'pointer' }}
-                        >
-                            {isExporting ? 'กำลังเตรียม...' : ' ส่งออก PDF'}
-                        </button>
-                        <button
-                            onClick={onClose}
-                            style={{ flex: 1, padding: '1rem', borderRadius: '1rem', border: 'none', background: '#2563eb', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}
-                        >
-                            ปิดหน้าต่าง
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>กำลังโหลดประวัติ...</div>;
-
-    return (
-        <div style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto', background: '#f8fafc', minHeight: '100vh' }}>
-            <h2 style={{ marginBottom: '2rem', color: '#1e293b' }}>ประวัติการใช้งานของคุณ</h2>
-            <div style={{ background: 'white', borderRadius: '1rem', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                        <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
-                            <th style={{ padding: '1rem', textAlign: 'left', color: '#64748b', width: '150px', whiteSpace: 'nowrap' }}>กิจกรรม</th>
-                            <th style={{ padding: '1rem', textAlign: 'left', color: '#64748b' }}>รายละเอียดเบื้องต้น</th>
-                            <th style={{ padding: '1rem', textAlign: 'center', color: '#64748b', width: '180px' }}>จัดการ</th>
-                            <th style={{ padding: '1rem', textAlign: 'right', color: '#64748b', width: '200px', whiteSpace: 'nowrap' }}>เวลา</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {logs.map((log) => {
-                            const detail = parseDetail(log);
-                            return (
-                                <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                    <td style={{ padding: '1rem' }}>
-                                        <span style={{
-                                            padding: '0.25rem 0.5rem', borderRadius: '0.25rem', fontSize: '0.8rem', fontWeight: 'bold',
-                                            background: log.action.includes('CREATE') ? '#dcfce7' : log.action.includes('DELETE') ? '#fee2e2' : '#e0f2fe',
-                                            color: log.action.includes('CREATE') ? '#10b981' : log.action.includes('DELETE') ? '#ef4444' : '#0369a1'
-                                        }}>
-                                            {log.action}
-                                        </span>
-                                    </td>
-                                    <td style={{ padding: '1rem', color: '#1e293b' }}>
-                                        {detail?.title || '-'}
-                                        {detail?.result && (
-                                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                                ระดับ: {detail.result.risk_level} | คะแนน: {detail.result.score}
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                        {log.action === 'CREATE_RISK' && (
-                                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                                                <button
-                                                    onClick={() => setSelectedLog(log)}
-                                                    style={{ padding: '0.4rem 0.8rem', borderRadius: '0.5rem', border: '1px solid #3b82f6', background: 'transparent', color: '#2563eb', cursor: 'pointer', fontSize: '0.8rem' }}
-                                                >
-                                                    ดูข้อมูล
-                                                </button>
-                                                <button
-                                                    onClick={() => exportLogPDF(log)}
-                                                    disabled={isExporting}
-                                                    style={{ padding: '0.4rem 0.8rem', borderRadius: '0.5rem', border: '1px solid #10b981', background: 'transparent', color: '#059669', cursor: isExporting ? 'not-allowed' : 'pointer', fontSize: '0.8rem' }}
-                                                >
-                                                    {isExporting ? '...' : 'PDF'}
-                                                </button>
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td style={{ padding: '1rem', color: '#94a3b8', fontSize: '0.85rem', textAlign: 'right' }}>
-                                        {new Date(log.created_at).toLocaleString('th-TH')}
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                        {logs.length === 0 && (
-                            <tr>
-                                <td colSpan="4" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>ยังไม่มีประวัติการใช้งาน</td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-
-            {selectedLog && <Modal log={selectedLog} onClose={() => setSelectedLog(null)} />}
-        </div>
-    );
+  return <div className="collection-page">
+    <div className="page-heading"><div><span className="eyebrow">ASSESSMENT HISTORY</span><h1>ประวัติการประเมิน</h1><p>ย้อนดูผลการประเมินและกิจกรรมในบัญชีของคุณ</p></div><button className="button button-primary" onClick={onNewAssessment}><Icon name="grid" size={17}/> ประเมินใหม่</button></div>
+    {loading ? <div className="loading-state" role="status"><span className="spinner"/><p>กำลังโหลดประวัติของคุณ</p></div> : error ? <div className="empty-state error-state" role="alert"><Icon name="info" size={32}/><h2>ยังโหลดประวัติไม่ได้</h2><p>{error}</p><button className="button button-secondary" onClick={() => setRetry(value => value + 1)}>ลองอีกครั้ง</button></div> : logs.length === 0 ? <div className="empty-state"><Icon name="history" size={38}/><h2>เริ่มต้นการประเมินครั้งแรก</h2><p>เมื่อบันทึกผลแล้ว ประวัติและรายงานของคุณจะแสดงที่นี่</p><button className="button button-primary" onClick={onNewAssessment}>เริ่มประเมิน <Icon name="arrow" size={17}/></button></div> : <>
+      <div className="history-controls"><label className="sr-only" htmlFor="history-search">ค้นหาในประวัติที่แสดง</label><input id="history-search" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="ค้นหาชื่อหรือกิจกรรมในรายการที่แสดง"/><span>แสดงล่าสุด {logs.length} จาก {total} รายการ</span></div>
+      {filtered.length === 0 ? <div className="empty-state"><Icon name="file" size={32}/><h2>ไม่พบรายการที่ค้นหา</h2><p>ลองใช้คำค้นอื่น หรือล้างคำค้นเพื่อดูรายการทั้งหมด</p><button className="button button-secondary" onClick={() => setSearch('')}>ล้างคำค้น</button></div> : <div className="table-panel"><table className="data-table history-table"><thead><tr><th scope="col">กิจกรรม</th><th scope="col">รายละเอียด</th><th scope="col">วันที่และเวลา</th><th scope="col">รายงาน</th></tr></thead><tbody>{filtered.map(log => {
+        const item = parseDetail(log);
+        return <tr key={log.id}><td><span className={'activity-tag ' + (log.action === 'CREATE_RISK' ? 'created' : '')}>{actionLabels[log.action] || log.action}</span></td><td className="history-title"><strong>{item?.title || (log.action === 'LOGIN' ? 'เข้าใช้งานบัญชีของคุณ' : log.action === 'REGISTER' ? 'บัญชีพร้อมใช้งาน' : 'กิจกรรมในบัญชี')}</strong>{item?.result && <small>ความเสี่ยง{riskLabels[item.result.risk_level] || item.result.risk_level} · คะแนนเมทริกซ์ {item.result.score}/25</small>}</td><td className="history-time"><time dateTime={log.created_at}>{formatDate(log.created_at)}</time></td><td className="history-actions">{log.action === 'CREATE_RISK' && item && <div className="table-actions"><button className="button button-secondary" onClick={() => setSelectedLog(log)}>ดูรายละเอียด</button><button className="button button-secondary" disabled={isExporting} onClick={() => exportLogPDF(log)} aria-label={'ดาวน์โหลด PDF ' + (item.title || '')}><Icon name="download" size={14}/>{isExporting ? 'กำลังเตรียม' : 'PDF'}</button></div>}</td></tr>;
+      })}</tbody></table></div>}
+    </>}
+    {selectedLog && detail && <Dialog titleId="history-dialog-title" onClose={() => setSelectedLog(null)}>
+      <h2 id="history-dialog-title">รายละเอียดการประเมิน</h2><p>{detail.title || 'ผลการประเมินความเสี่ยง'}</p>
+      <div className="modal-stats"><div><small>ระดับตามเมทริกซ์</small><strong>{riskLabels[detail.result?.risk_level] || detail.result?.risk_level || '—'}</strong></div><div><small>คะแนนเมทริกซ์ / 25</small><strong>{detail.result?.score ?? '—'}</strong></div></div>
+      <h3>คะแนนปัจจัยที่ประเมิน</h3>
+      {inputs ? <div className="modal-factor-grid">{Object.entries(inputs).map(([category, factors]) => <div key={category}><h4>{categoryLabels[category] || category}</h4>{Object.entries(factors).map(([factor, value]) => <p key={factor}><span>{factorLabels[factor] || factor}</span><strong>{value}</strong></p>)}</div>)}</div> : <p>ไม่มีรายละเอียดปัจจัยในรายการนี้</p>}
+      <div className="modal-actions"><button className="button button-secondary" disabled={isExporting} onClick={() => exportLogPDF(selectedLog)}><Icon name="download" size={16}/>{isExporting ? 'กำลังเตรียม' : 'ดาวน์โหลด PDF'}</button><button className="button button-primary" onClick={() => setSelectedLog(null)}>ปิดหน้าต่าง</button></div>
+    </Dialog>}
+  </div>;
 }
