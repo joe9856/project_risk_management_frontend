@@ -344,7 +344,7 @@ export default function App() {
       doc.text(hasThai ? "แนะนำ: ควรตรวจสอบค่าความเสี่ยงที่สูงและดำเนินการแก้ไขตามความสำคัญ" : "Note: Address high risk factors by priority.", 20, finalY + 22);
 
       // 5. ใส่กราฟ
-      const canvas = await html2canvas(chartRef.current);
+      const canvas = await html2canvas(chartRef.current, { backgroundColor: '#101327' });
       const imgData = canvas.toDataURL('image/png');
       doc.addImage(imgData, 'PNG', 20, finalY + 32, 170, 85);
 
@@ -455,7 +455,7 @@ export default function App() {
                 </section>
                 <section className="panel chart-panel" aria-labelledby="chart-heading">
                   <div className="panel-heading"><div><h2 id="chart-heading">ภาพรวมทั้ง 4 หมวด</h2><p>เปรียบเทียบคะแนนเพื่อดูว่าควรให้ความสำคัญกับส่วนใด</p></div><span className="meta">สูงสุด 36 / หมวด</span></div>
-                  <div className="assessment-chart" ref={chartRef}><Bar data={{...chartData, labels: categories.map(item => item.title), datasets: chartData.datasets.map(dataset => ({ ...dataset, backgroundColor: ['#3765cd', '#6e92e1', '#9ab4ec', '#bfd1f5'], borderWidth: 0, barPercentage: .6 }))}} aria-label="กราฟคะแนนความเสี่ยงทั้งสี่หมวด" role="img" options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 36, ticks: { stepSize: 9 }, grid: { color: '#edf0f5' }, border: { display: false } }, x: { grid: { display: false }, ticks: { font: { family: 'Sarabun', size: 11 }, color: '#62718a' }, border: { display: false } } } }}/></div>
+                  <div className="assessment-chart" ref={chartRef}><Bar data={{...chartData, labels: categories.map(item => item.title), datasets: chartData.datasets.map(dataset => ({ ...dataset, backgroundColor: ['#7378ff', '#9696ff', '#a9b6ff', '#c9d0ff'], borderWidth: 0, barPercentage: .6 }))}} aria-label="กราฟคะแนนความเสี่ยงทั้งสี่หมวด" role="img" options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 36, ticks: { stepSize: 9, color: '#a6afcb' }, grid: { color: '#2b3152' }, border: { display: false } }, x: { grid: { display: false }, ticks: { font: { family: 'Sarabun', size: 11 }, color: '#a6afcb' }, border: { display: false } } } }}/></div>
                 </section>
                 <section className="panel ai-panel" aria-labelledby="ai-heading">
                   <div className="ai-heading"><span className="ai-symbol"><Icon name="spark"/></span><div><h2 id="ai-heading">อีกมุมมองสำหรับแผนรับมือ</h2><p>ให้ AI ช่วยสรุปคะแนนและเสนอแนวทางจัดการความเสี่ยง</p></div></div>

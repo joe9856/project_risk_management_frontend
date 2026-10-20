@@ -79,49 +79,49 @@ export default function AdminUsers({ addToast }) {
     if (loadError) return <div className="empty-state error-state" role="alert"><Icon name="info" size={32}/><h2>ยังโหลดรายชื่อไม่ได้</h2><p>{loadError}</p><button className="button button-secondary" onClick={fetchUsers}>ลองอีกครั้ง</button></div>;
 
     return (
-        <div className="management-page collection-page" style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto", background: "#f8fafc", minHeight: "100vh" }}>
+        <div className="management-page collection-page" style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto", background: "var(--canvas)", minHeight: "100vh" }}>
             <div className="management-heading page-heading" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
-                <h2 style={{ color: "#1e293b" }}>จัดการผู้ใช้งาน</h2>
+                <h2 style={{ color: "var(--text)" }}>จัดการผู้ใช้งาน</h2>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <span style={{ fontSize: "0.9rem", color: "#64748b" }}>รวม {users.length} คน</span>
+                    <span style={{ fontSize: "0.9rem", color: "var(--text-muted)" }}>รวม {users.length} คน</span>
                     <button
                         onClick={() => setIsAddingNew(true)}
-                        style={{ padding: '0.6rem 1.2rem', borderRadius: '0.75rem', border: 'none', background: '#2563eb', color: 'white', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                        className="button button-primary"
                     >
                         ＋ เพิ่มผู้ใช้งานใหม่
                     </button>
                 </div>
             </div>
 
-            <div className="management-table" style={{ background: "white", borderRadius: "1rem", overflow: "hidden", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+            <div className="management-table" style={{ background: "var(--surface)", borderRadius: "1rem", overflow: "hidden", border: "1px solid var(--border)", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
-                        <tr style={{ background: "#f1f5f9", borderBottom: "1px solid #e2e8f0" }}>
-                            <th style={{ padding: "1rem", textAlign: "left", color: "#64748b" }}>ID</th>
-                            <th style={{ padding: "1rem", textAlign: "left", color: "#64748b" }}>ชื่อ-นามสกุล</th>
-                            <th style={{ padding: "1rem", textAlign: "left", color: "#64748b" }}>อีเมล</th>
-                            <th style={{ padding: "1rem", textAlign: "left", color: "#64748b" }}>สิทธิ์ (Role)</th>
-                            <th style={{ padding: "1rem", textAlign: "center", color: "#64748b" }}>จัดการ</th>
+                        <tr style={{ background: "var(--surface-raised)", borderBottom: "1px solid var(--border)" }}>
+                            <th style={{ padding: "1rem", textAlign: "left", color: "var(--text-muted)" }}>ID</th>
+                            <th style={{ padding: "1rem", textAlign: "left", color: "var(--text-muted)" }}>ชื่อ-นามสกุล</th>
+                            <th style={{ padding: "1rem", textAlign: "left", color: "var(--text-muted)" }}>อีเมล</th>
+                            <th style={{ padding: "1rem", textAlign: "left", color: "var(--text-muted)" }}>สิทธิ์ (Role)</th>
+                            <th style={{ padding: "1rem", textAlign: "center", color: "var(--text-muted)" }}>จัดการ</th>
                         </tr>
                     </thead>
                     <tbody>
                         {users.map((u) => (
-                            <tr key={u.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                                <td style={{ padding: "1rem", color: "#64748b" }}>{u.id}</td>
-                                <td style={{ padding: "1rem", fontWeight: "600", color: "#1e293b" }}>{u.name}</td>
-                                <td style={{ padding: "1rem", color: "#64748b" }}>{u.email}</td>
+                            <tr key={u.id} style={{ borderBottom: "1px solid var(--surface-raised)" }}>
+                                <td style={{ padding: "1rem", color: "var(--text-muted)" }}>{u.id}</td>
+                                <td style={{ padding: "1rem", fontWeight: "600", color: "var(--text)" }}>{u.name}</td>
+                                <td style={{ padding: "1rem", color: "var(--text-muted)" }}>{u.email}</td>
                                 <td style={{ padding: "1rem" }}>
                                     <span style={{
                                         padding: "0.25rem 0.6rem", borderRadius: "1rem", fontSize: "0.75rem", fontWeight: "bold",
-                                        background: u.role === "admin" ? "#fee2e2" : "#e0f2fe",
-                                        color: u.role === "admin" ? "#ef4444" : "#0369a1"
+                                        background: u.role === "admin" ? "var(--danger-soft)" : "var(--primary-soft)",
+                                        color: u.role === "admin" ? "var(--danger)" : "var(--primary)"
                                     }}>
                                         {u.role.toUpperCase()}
                                     </span>
                                 </td>
                                 <td style={{ padding: "1rem", textAlign: "center" }}>
-                                    <button onClick={() => setEditingUser(u)} style={{ marginRight: "0.5rem", padding: "0.4rem 0.8rem", borderRadius: "0.5rem", border: "1px solid #3b82f6", background: "transparent", color: "#2563eb", cursor: "pointer" }}>แก้ไข</button>
-                                    <button onClick={() => handleDelete(u.id)} style={{ padding: "0.4rem 0.8rem", borderRadius: "0.5rem", border: "1px solid #ef4444", background: "transparent", color: "#ef4444", cursor: "pointer" }}>ลบ</button>
+                                    <button onClick={() => setEditingUser(u)} style={{ marginRight: "0.5rem", padding: "0.4rem 0.8rem", borderRadius: "0.5rem", border: "1px solid var(--border-strong)", background: "transparent", color: "var(--primary)", cursor: "pointer" }}>แก้ไข</button>
+                                    <button onClick={() => handleDelete(u.id)} style={{ padding: "0.4rem 0.8rem", borderRadius: "0.5rem", border: "1px solid var(--danger)", background: "transparent", color: "var(--danger)", cursor: "pointer" }}>ลบ</button>
                                 </td>
                             </tr>
                         ))}
@@ -135,45 +135,45 @@ export default function AdminUsers({ addToast }) {
                         <h3 id="create-user-title" style={{ marginBottom: "1.5rem", paddingRight: "32px" }}>สร้างผู้ใช้งานใหม่</h3>
                         <form onSubmit={handleCreate}>
                             <div style={{ marginBottom: "1rem" }}>
-                                <label htmlFor="new-user-name" style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>ชื่อ-นามสกุล</label>
+                                <label htmlFor="new-user-name" style={{ display: "block", fontSize: "0.9rem", color: "var(--text-muted)" }}>ชื่อ-นามสกุล</label>
                                 <input
                                     id="new-user-name" type="text" required value={newUser.name}
                                     onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
                                     placeholder="เช่น สมชาย ใจดี"
-                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0" }}
+                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid var(--border)" }}
                                 />
                             </div>
                             <div style={{ marginBottom: "1rem" }}>
-                                <label htmlFor="new-user-email" style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>อีเมล</label>
+                                <label htmlFor="new-user-email" style={{ display: "block", fontSize: "0.9rem", color: "var(--text-muted)" }}>อีเมล</label>
                                 <input
                                     id="new-user-email" type="email" required value={newUser.email}
                                     onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                                     placeholder="user@example.com"
-                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0" }}
+                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid var(--border)" }}
                                 />
                             </div>
                             <div style={{ marginBottom: "1rem" }}>
-                                <label htmlFor="new-user-password" style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>รหัสผ่าน (อย่างน้อย 8 ตัวอักษร)</label>
+                                <label htmlFor="new-user-password" style={{ display: "block", fontSize: "0.9rem", color: "var(--text-muted)" }}>รหัสผ่าน (อย่างน้อย 8 ตัวอักษร)</label>
                                 <input
                                     id="new-user-password" type="password" autoComplete="new-password" required minLength={8} value={newUser.password}
                                     onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0" }}
+                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid var(--border)" }}
                                 />
                             </div>
                             <div style={{ marginBottom: "2rem" }}>
-                                <label htmlFor="new-user-role" style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>สิทธิ์ (Role)</label>
+                                <label htmlFor="new-user-role" style={{ display: "block", fontSize: "0.9rem", color: "var(--text-muted)" }}>สิทธิ์ (Role)</label>
                                 <select
                                     id="new-user-role" value={newUser.role}
                                     onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0" }}
+                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid var(--border)" }}
                                 >
                                     <option value="user">USER</option>
                                     <option value="admin">ADMIN</option>
                                 </select>
                             </div>
                             <div style={{ display: "flex", gap: "1rem" }}>
-                                <button type="button" onClick={() => setIsAddingNew(false)} style={{ flex: 1, padding: "0.8rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0", background: "white", cursor: "pointer" }}>ยกเลิก</button>
-                                <button type="submit" style={{ flex: 1, padding: "0.8rem", borderRadius: "0.5rem", border: "none", background: "#2563eb", color: "white", fontWeight: "bold", cursor: "pointer" }}>สร้างบัญชี</button>
+                                <button type="button" onClick={() => setIsAddingNew(false)} style={{ flex: 1, padding: "0.8rem", borderRadius: "0.5rem", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer" }}>ยกเลิก</button>
+                                <button type="submit" style={{ flex: 1, padding: "0.8rem", borderRadius: "0.5rem", border: "none", background: "var(--action-fill)", color: "white", fontWeight: "bold", cursor: "pointer" }}>สร้างบัญชี</button>
                             </div>
                         </form>
                 </Dialog>
@@ -185,35 +185,35 @@ export default function AdminUsers({ addToast }) {
                         <h3 id="edit-user-title" style={{ marginBottom: "1.5rem", paddingRight: "32px" }}>แก้ไขข้อมูลผู้ใช้งาน</h3>
                         <form onSubmit={handleUpdate}>
                             <div style={{ marginBottom: "1rem" }}>
-                                <label htmlFor="edit-user-name" style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>ชื่อ</label>
+                                <label htmlFor="edit-user-name" style={{ display: "block", fontSize: "0.9rem", color: "var(--text-muted)" }}>ชื่อ</label>
                                 <input
                                     id="edit-user-name" type="text" required value={editingUser.name}
                                     onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
-                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0" }}
+                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid var(--border)" }}
                                 />
                             </div>
                             <div style={{ marginBottom: "1rem" }}>
-                                <label htmlFor="edit-user-email" style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>อีเมล</label>
+                                <label htmlFor="edit-user-email" style={{ display: "block", fontSize: "0.9rem", color: "var(--text-muted)" }}>อีเมล</label>
                                 <input
                                     id="edit-user-email" type="email" required value={editingUser.email}
                                     onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
-                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0" }}
+                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid var(--border)" }}
                                 />
                             </div>
                             <div style={{ marginBottom: "2rem" }}>
-                                <label htmlFor="edit-user-role" style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>สิทธิ์ (Role)</label>
+                                <label htmlFor="edit-user-role" style={{ display: "block", fontSize: "0.9rem", color: "var(--text-muted)" }}>สิทธิ์ (Role)</label>
                                 <select
                                     id="edit-user-role" value={editingUser.role}
                                     onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
-                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0" }}
+                                    style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid var(--border)" }}
                                 >
                                     <option value="user">USER</option>
                                     <option value="admin">ADMIN</option>
                                 </select>
                             </div>
                             <div style={{ display: "flex", gap: "1rem" }}>
-                                <button type="button" onClick={() => setEditingUser(null)} style={{ flex: 1, padding: "0.8rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0", background: "white", cursor: "pointer" }}>ยกเลิก</button>
-                                <button type="submit" style={{ flex: 1, padding: "0.8rem", borderRadius: "0.5rem", border: "none", background: "#2563eb", color: "white", fontWeight: "bold", cursor: "pointer" }}>บันทึก</button>
+                                <button type="button" onClick={() => setEditingUser(null)} style={{ flex: 1, padding: "0.8rem", borderRadius: "0.5rem", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer" }}>ยกเลิก</button>
+                                <button type="submit" style={{ flex: 1, padding: "0.8rem", borderRadius: "0.5rem", border: "none", background: "var(--action-fill)", color: "white", fontWeight: "bold", cursor: "pointer" }}>บันทึก</button>
                             </div>
                         </form>
                 </Dialog>
