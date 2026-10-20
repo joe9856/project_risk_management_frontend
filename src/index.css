@@ -20,7 +20,7 @@
   --radius: 14px;
 }
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; font-size: 14px; line-height: 1.6; }
+body { margin: 0; min-width: 0; font-size: 14px; line-height: 1.6; }
 button, input, select, textarea { font: inherit; }
 button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
@@ -425,6 +425,15 @@ svg { flex-shrink: 0; vertical-align: middle; }
   .modal-overlay { padding: 12px; }.modal-content { padding: 25px 20px; max-height: calc(100dvh - 24px); }.modal-content h2 { font-size: 21px; }.modal-factor-grid { grid-template-columns: 1fr; }.modal-actions .button { flex: 1; font-size: 12px; }.modal-stats strong { font-size: 24px; }
   .management-heading h2 { font-size: 23px; }.management-heading > div { flex-wrap: wrap; }
   .toast-container { right: 16px; bottom: 16px; }.toast-item { padding: 14px 12px; gap: 9px; }.toast-content strong { font-size: 12px; }.toast-content p { font-size: 11px; }
+}
+@media (max-width: 340px) {
+  .workspace-content { padding-left: 12px; padding-right: 12px; }
+  .page-heading { flex-wrap: wrap; }
+  .page-heading > div { width: 100%; }
+  .reset-all { margin-top: 0; }
+  .auth-form-area { padding-left: 18px; padding-right: 18px; }
+  .summary-panel { padding-left: 17px; padding-right: 17px; }
+  .nav-item { font-size: 10px; gap: 5px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
