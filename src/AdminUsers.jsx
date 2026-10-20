@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Dialog, Icon } from "./UI";
 import { getAdminUsers, updateAdminUser, deleteAdminUser, createAdminUser } from "./api";
 
 export default function AdminUsers({ addToast }) {
@@ -6,6 +7,7 @@ export default function AdminUsers({ addToast }) {
     const [loading, setLoading] = useState(true);
     const [editingUser, setEditingUser] = useState(null);
     const [isAddingNew, setIsAddingNew] = useState(false);
+    const [loadError, setLoadError] = useState('');
     const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'user' });
 
     useEffect(() => {
@@ -15,10 +17,12 @@ export default function AdminUsers({ addToast }) {
     const fetchUsers = async () => {
         try {
             setLoading(true);
+            setLoadError('');
             const res = await getAdminUsers();
             if (res.success) setUsers(res.data);
+            else setLoadError(res.message || 'โหลดรายชื่อไม่สำเร็จ');
         } catch (err) {
-            console.error(err);
+            setLoadError('เชื่อมต่อไม่ได้ในขณะนี้ กรุณาลองอีกครั้ง');
         } finally {
             setLoading(false);
         }
@@ -70,12 +74,14 @@ export default function AdminUsers({ addToast }) {
         }
     };
 
-    if (loading) return <div style={{ padding: "2rem", textAlign: "center" }}>กำลังโหลดรายชื่อผู้ใช้...</div>;
+    if (loading) return <div className="loading-state" role="status"><span className="spinner"/><p>กำลังโหลดรายชื่อผู้ใช้งาน</p></div>;
+
+    if (loadError) return <div className="empty-state error-state" role="alert"><Icon name="info" size={32}/><h2>ยังโหลดรายชื่อไม่ได้</h2><p>{loadError}</p><button className="button button-secondary" onClick={fetchUsers}>ลองอีกครั้ง</button></div>;
 
     return (
-        <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto", background: "#f8fafc", minHeight: "100vh" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
-                <h2 style={{ color: "#1e293b" }}>จัดการผู้ใช้งาน (User Management)</h2>
+        <div className="management-page collection-page" style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto", background: "#f8fafc", minHeight: "100vh" }}>
+            <div className="management-heading page-heading" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
+                <h2 style={{ color: "#1e293b" }}>จัดการผู้ใช้งาน</h2>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <span style={{ fontSize: "0.9rem", color: "#64748b" }}>รวม {users.length} คน</span>
                     <button
@@ -87,7 +93,7 @@ export default function AdminUsers({ addToast }) {
                 </div>
             </div>
 
-            <div style={{ background: "white", borderRadius: "1rem", overflow: "hidden", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
+            <div className="management-table" style={{ background: "white", borderRadius: "1rem", overflow: "hidden", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                     <thead>
                         <tr style={{ background: "#f1f5f9", borderBottom: "1px solid #e2e8f0" }}>
@@ -125,40 +131,39 @@ export default function AdminUsers({ addToast }) {
 
             {/* Modal เพิ่ม User ใหม่ */}
             {isAddingNew && (
-                <div className="modal-overlay">
-                    <div className="modal-content" style={{ maxWidth: "450px" }}>
-                        <h3 style={{ marginBottom: "1.5rem" }}>สร้างผู้ใช้งานใหม่</h3>
+                <Dialog titleId="create-user-title" onClose={() => setIsAddingNew(false)}>
+                        <h3 id="create-user-title" style={{ marginBottom: "1.5rem", paddingRight: "32px" }}>สร้างผู้ใช้งานใหม่</h3>
                         <form onSubmit={handleCreate}>
                             <div style={{ marginBottom: "1rem" }}>
-                                <label style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>ชื่อ-นามสกุล</label>
+                                <label htmlFor="new-user-name" style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>ชื่อ-นามสกุล</label>
                                 <input
-                                    type="text" required value={newUser.name}
+                                    id="new-user-name" type="text" required value={newUser.name}
                                     onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
                                     placeholder="เช่น สมชาย ใจดี"
                                     style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0" }}
                                 />
                             </div>
                             <div style={{ marginBottom: "1rem" }}>
-                                <label style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>อีเมล</label>
+                                <label htmlFor="new-user-email" style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>อีเมล</label>
                                 <input
-                                    type="email" required value={newUser.email}
+                                    id="new-user-email" type="email" required value={newUser.email}
                                     onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                                     placeholder="user@example.com"
                                     style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0" }}
                                 />
                             </div>
                             <div style={{ marginBottom: "1rem" }}>
-                                <label style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>รหัสผ่าน (อย่างน้อย 8 ตัวอักษร)</label>
+                                <label htmlFor="new-user-password" style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>รหัสผ่าน (อย่างน้อย 8 ตัวอักษร)</label>
                                 <input
-                                    type="password" required minLength={8} value={newUser.password}
+                                    id="new-user-password" type="password" autoComplete="new-password" required minLength={8} value={newUser.password}
                                     onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                                     style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0" }}
                                 />
                             </div>
                             <div style={{ marginBottom: "2rem" }}>
-                                <label style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>สิทธิ์ (Role)</label>
+                                <label htmlFor="new-user-role" style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>สิทธิ์ (Role)</label>
                                 <select
-                                    value={newUser.role}
+                                    id="new-user-role" value={newUser.role}
                                     onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                                     style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0" }}
                                 >
@@ -171,36 +176,34 @@ export default function AdminUsers({ addToast }) {
                                 <button type="submit" style={{ flex: 1, padding: "0.8rem", borderRadius: "0.5rem", border: "none", background: "#2563eb", color: "white", fontWeight: "bold", cursor: "pointer" }}>สร้างบัญชี</button>
                             </div>
                         </form>
-                    </div>
-                </div>
+                </Dialog>
             )}
 
             {/* Modal แก้ไข User */}
             {editingUser && (
-                <div className="modal-overlay">
-                    <div className="modal-content" style={{ maxWidth: "450px" }}>
-                        <h3 style={{ marginBottom: "1.5rem" }}>แก้ไขข้อมูลผู้ใช้งาน</h3>
+                <Dialog titleId="edit-user-title" onClose={() => setEditingUser(null)}>
+                        <h3 id="edit-user-title" style={{ marginBottom: "1.5rem", paddingRight: "32px" }}>แก้ไขข้อมูลผู้ใช้งาน</h3>
                         <form onSubmit={handleUpdate}>
                             <div style={{ marginBottom: "1rem" }}>
-                                <label style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>ชื่อ</label>
+                                <label htmlFor="edit-user-name" style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>ชื่อ</label>
                                 <input
-                                    type="text" value={editingUser.name}
+                                    id="edit-user-name" type="text" required value={editingUser.name}
                                     onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
                                     style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0" }}
                                 />
                             </div>
                             <div style={{ marginBottom: "1rem" }}>
-                                <label style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>อีเมล</label>
+                                <label htmlFor="edit-user-email" style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>อีเมล</label>
                                 <input
-                                    type="email" value={editingUser.email}
+                                    id="edit-user-email" type="email" required value={editingUser.email}
                                     onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
                                     style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0" }}
                                 />
                             </div>
                             <div style={{ marginBottom: "2rem" }}>
-                                <label style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>สิทธิ์ (Role)</label>
+                                <label htmlFor="edit-user-role" style={{ display: "block", fontSize: "0.9rem", color: "#64748b" }}>สิทธิ์ (Role)</label>
                                 <select
-                                    value={editingUser.role}
+                                    id="edit-user-role" value={editingUser.role}
                                     onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
                                     style={{ width: "100%", padding: "0.75rem", borderRadius: "0.5rem", border: "1px solid #e2e8f0" }}
                                 >
@@ -213,8 +216,7 @@ export default function AdminUsers({ addToast }) {
                                 <button type="submit" style={{ flex: 1, padding: "0.8rem", borderRadius: "0.5rem", border: "none", background: "#2563eb", color: "white", fontWeight: "bold", cursor: "pointer" }}>บันทึก</button>
                             </div>
                         </form>
-                    </div>
-                </div>
+                </Dialog>
             )}
         </div>
     );
