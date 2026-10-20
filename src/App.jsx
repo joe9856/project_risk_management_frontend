@@ -3,8 +3,9 @@ import Login from "./Login";
 import Register from "./Register";
 import UserHistory from "./UserHistory";
 import AdminUsers from "./AdminUsers";
-import { Brand, Icon, userMessage } from "./UI";
+import { Icon, userMessage } from "./UI";
 import RiskMatrix from "./RiskMatrix";
+import RiskHome, { SiteHeader } from './RiskHome';
 import { saveRisk, getAIAnalysis } from "./api";
 // import { thaiFontBase64 } from "./thaiFont"; // ❌ ไม่ต้องใช้แบบยาวๆ แล้ว
 import { Bar } from "react-chartjs-2";
@@ -69,8 +70,8 @@ const scoreOptions = [[0, 'ไม่มีความเสี่ยง'], [1, 
 export default function App() {
   const [user, setUser] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentPage, setCurrentPage] = useState('login');
-  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard' or 'history'
+  const [currentPage, setCurrentPage] = useState('home');
+  const [currentView, setCurrentView] = useState('home');
   const [toasts, setToasts] = useState([]); // ✅ ระบบแจ้งเตือนหลายรายการ
   const [isExporting, setIsExporting] = useState(false);
   const [aiResponse, setAiResponse] = useState(null);
@@ -243,8 +244,8 @@ export default function App() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     resetAllScores();
-    setCurrentView('dashboard');
-    setCurrentPage('login');
+    setCurrentView('home');
+    setCurrentPage('home');
     setToasts([]);
     setIsLoggedIn(false);
     setUser(null);
@@ -252,6 +253,7 @@ export default function App() {
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
+    setCurrentView(view => view === 'home' ? 'dashboard' : view);
     setIsLoggedIn(true);
   };
 
@@ -388,33 +390,28 @@ export default function App() {
     document.getElementById('assessment-form')?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   };
 
+  const navigate = (view) => {
+    if (isLoggedIn) setCurrentView(view);
+    else if (view === 'home') setCurrentPage('home');
+    else { setCurrentView(view); setCurrentPage('login'); }
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+  const siteHeader = <SiteHeader user={isLoggedIn ? user : null} view={isLoggedIn ? currentView : 'home'} onNavigate={navigate} onLogin={() => { setCurrentView('dashboard'); setCurrentPage('login'); }} onLogout={handleLogout}/>;
+
+  if ((!isLoggedIn && currentPage === 'home') || (isLoggedIn && currentView === 'home')) {
+    return <div className="reference-site"><a className="skip-link" href="#main-content">ข้ามไปเนื้อหา</a>{siteHeader}<RiskHome onStart={() => navigate('dashboard')} onHistory={() => navigate('history')}/></div>;
+  }
   if (!isLoggedIn) {
-    return currentPage === 'login'
+    return <div className="reference-auth"><button className="text-button auth-home-return" onClick={() => setCurrentPage('home')}><Icon name="back" size={16}/> กลับหน้าแรก</button>{currentPage === 'login'
       ? <Login onLoginSuccess={handleLoginSuccess} onGoToRegister={() => setCurrentPage('register')} />
-      : <Register onBackToLogin={() => setCurrentPage('login')} />;
+      : <Register onBackToLogin={() => setCurrentPage('login')} />}</div>;
   }
 
   return (
     <div className="workspace">
       <a className="skip-link" href="#main-content">ข้ามไปเนื้อหา</a>
-      <aside className="sidebar" aria-label="เมนูหลัก">
-        <Brand/>
-        <div className="sidebar-label">พื้นที่ทำงาน</div>
-        <nav className="main-nav">
-          <button className={currentView === 'dashboard' ? 'nav-item selected' : 'nav-item'} aria-current={currentView === 'dashboard' ? 'page' : undefined} onClick={() => setCurrentView('dashboard')}><Icon name="grid"/><span>ประเมินความเสี่ยง</span></button>
-          <button className={currentView === 'history' ? 'nav-item selected' : 'nav-item'} aria-current={currentView === 'history' ? 'page' : undefined} onClick={() => setCurrentView('history')}><Icon name="history"/><span>ประวัติการประเมิน</span></button>
-          {user?.role === 'admin' && <button className={currentView === 'admin-users' ? 'nav-item selected' : 'nav-item'} aria-current={currentView === 'admin-users' ? 'page' : undefined} onClick={() => setCurrentView('admin-users')}><Icon name="users"/><span>จัดการผู้ใช้งาน</span></button>}
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="sidebar-guide"><Icon name="shield" size={23}/><strong>ประเมินให้ครบ มองเห็นได้ชัด</strong><p>เลือกคะแนนทั้ง 16 ปัจจัย<br/>เพื่อสรุปผลและบันทึกรายงาน</p></div>
-          <button className="logout-button" onClick={handleLogout} aria-label="ออกจากระบบ"><Icon name="logout" size={18}/><span>ออกจากระบบ</span></button>
-        </div>
-      </aside>
+      {siteHeader}
       <div className="workspace-body">
-        <header className="workspace-topbar">
-          <div className="breadcrumb"><span>พื้นที่ทำงาน</span><Icon name="chevron" size={14}/><strong>{currentView === 'dashboard' ? 'ประเมินความเสี่ยง' : currentView === 'history' ? 'ประวัติการประเมิน' : 'จัดการผู้ใช้งาน'}</strong></div>
-          <div className="account"><span className="account-avatar">{user?.name?.slice(0, 1) || 'U'}</span><div><strong>{user?.name}</strong><small>{user?.role === 'admin' ? 'ผู้ดูแลระบบ' : 'บัญชีส่วนตัว'}</small></div></div>
-        </header>
         <main className="workspace-content" id="main-content">
           {currentView === 'history' ? <UserHistory user={user} addToast={addToast} onNewAssessment={() => setCurrentView('dashboard')}/> : currentView === 'admin-users' ? <AdminUsers addToast={addToast}/> : <>
             <div className="page-heading">
