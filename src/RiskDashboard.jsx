@@ -1,11 +1,11 @@
 /**
  * RiskDashboard.jsx
  * Analytics Dashboard — แสดงภาพรวมสถิติและแนวโน้มความเสี่ยง
- * ดึงข้อมูลจาก History (getActivities) และแสดงเป็น Charts
+ * ดึงรายการประเมินที่บันทึกไว้และแสดงเป็น Charts
  */
-import { useState, useEffect, useRef } from 'react';
-import { getActivities } from './api';
-import { Icon } from './UI';
+import { useState, useEffect } from 'react';
+import { getRiskAssessments } from './api';
+import { Icon, userMessage } from './UI';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement,
   PointElement, LineElement, RadialLinearScale, ArcElement,
@@ -46,39 +46,39 @@ function StatCard({ label, value, sub, icon, color, bg, border, trend }) {
   );
 }
 
-function parseScores(description) {
-  if (!description) return null;
-  try {
-    const data = JSON.parse(description);
-    if (data.threatAgent && data.vulnerability) return data;
-    return null;
-  } catch { return null; }
-}
-
 function calcCatTotal(scores, catId) {
   if (!scores || !scores[catId]) return 0;
   return Object.values(scores[catId]).reduce((s, v) => s + (v || 0), 0);
 }
 
-export default function RiskDashboard({ user, onNewAssessment }) {
-  const [logs, setLogs] = useState([]);
+function parseScores(description) {
+  try {
+    const scores = typeof description === 'string' ? JSON.parse(description) : description;
+    return scores && typeof scores === 'object' ? scores : null;
+  } catch { return null; }
+}
+
+export default function RiskDashboard({ onNewAssessment }) {
+  const [risks, setRisks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
     setLoading(true);
-    getActivities()
+    setError('');
+    getRiskAssessments({ signal: controller.signal })
       .then(res => {
         if (!active) return;
         if (!res.success) throw new Error(res.message || 'โหลดข้อมูลไม่สำเร็จ');
-        // กรองเฉพาะ CREATE_RISK
-        setLogs(res.data.filter(l => l.action === 'CREATE_RISK'));
+        setRisks(res.data);
       })
-      .catch(e => { if (active) setError(e.message); })
+      .catch(e => { if (active) setError(e instanceof TypeError || e instanceof SyntaxError ? 'เชื่อมต่อไม่ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง' : userMessage(e.message, 'โหลดข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง')); })
       .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, []);
+    return () => { active = false; controller.abort(); };
+  }, [retry]);
 
   if (loading) return (
     <div className="dash-loading">
@@ -88,13 +88,14 @@ export default function RiskDashboard({ user, onNewAssessment }) {
   );
 
   if (error) return (
-    <div className="dash-error">
+    <div className="dash-error" role="alert">
       <Icon name="info" size={22} />
       <p>{error}</p>
+      <button className="button button-secondary" onClick={() => setRetry(value => value + 1)}>ลองอีกครั้ง <Icon name="reset" size={16}/></button>
     </div>
   );
 
-  if (!logs.length) return (
+  if (!risks.length) return (
     <div className="dash-empty">
       <Icon name="grid" size={40} />
       <h3>ยังไม่มีข้อมูลสถิติ</h3>
@@ -106,25 +107,18 @@ export default function RiskDashboard({ user, onNewAssessment }) {
   );
 
   // --- คำนวณสถิติ ---
-  const total = logs.length;
+  const total = risks.length;
   const riskDist = { Low: 0, Medium: 0, High: 0, Critical: 0 };
-  logs.forEach(l => { if (riskDist[l.risk_level] !== undefined) riskDist[l.risk_level]++; });
+  risks.forEach(risk => { if (riskDist[risk.risk_level] !== undefined) riskDist[risk.risk_level]++; });
 
-  const highestRisk = logs.reduce((max, l) => {
+  const highestRisk = risks.reduce((max, l) => {
     const score = (l.likelihood || 1) * (l.impact || 1);
     const maxScore = (max.likelihood || 1) * (max.impact || 1);
     return score > maxScore ? l : max;
-  }, logs[0]);
+  }, risks[0]);
 
   // Radar Chart — ค่าเฉลี่ยแต่ละ Category
-  const parsed = logs.map(l => {
-    let detail;
-    try { detail = typeof l.detail === 'string' ? JSON.parse(l.detail) : l.detail; } catch { detail = null; }
-    const inputs = detail?.inputs;
-    let inputsParsed;
-    try { inputsParsed = typeof inputs === 'string' ? JSON.parse(inputs) : inputs; } catch { inputsParsed = inputs; }
-    return inputsParsed;
-  }).filter(Boolean);
+  const parsed = risks.map(risk => parseScores(risk.description)).filter(Boolean);
 
   const avgCat = {
     threatAgent: parsed.length ? parsed.reduce((s, p) => s + calcCatTotal(p, 'threatAgent'), 0) / parsed.length : 0,
@@ -148,16 +142,13 @@ export default function RiskDashboard({ user, onNewAssessment }) {
   };
 
   // Line Chart — Trend คะแนนล่าสุด 10 รายการ
-  const recent = [...logs].reverse().slice(0, 10).reverse();
+  const recent = risks.slice(0, 10).reverse();
   const lineData = {
     labels: recent.map((_, i) => `#${i + 1}`),
     datasets: [{
       label: 'คะแนนรวม',
-      data: recent.map(l => {
-        let detail, inputsParsed;
-        try { detail = typeof l.detail === 'string' ? JSON.parse(l.detail) : l.detail; } catch { detail = null; }
-        const inputs = detail?.inputs;
-        try { inputsParsed = typeof inputs === 'string' ? JSON.parse(inputs) : inputs; } catch { inputsParsed = inputs; }
+      data: recent.map(risk => {
+        const inputsParsed = parseScores(risk.description);
         if (!inputsParsed) return null;
         return ['threatAgent', 'vulnerability', 'technicalImpact', 'businessImpact']
           .reduce((s, k) => s + calcCatTotal(inputsParsed, k), 0);
@@ -222,7 +213,7 @@ export default function RiskDashboard({ user, onNewAssessment }) {
   };
 
   return (
-    <div className="risk-dashboard" id="main-content">
+    <div className="risk-dashboard">
       {/* Header */}
       <div className="dash-header">
         <div>

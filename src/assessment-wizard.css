@@ -26,6 +26,7 @@
 .wizard-steps li strong { display: block; font-size: 13px; font-weight: 400; }
 .wizard-steps li small { display: block; font-size: 10px; margin-top: 3px; color: #a0abc7; }
 .wizard-step-button:disabled { opacity: .65; }
+.wizard-step-button:hover:not(:disabled) { background: #ffffff08; }
 .wizard-steps li.current { background: #202b4a; border-color: #526391; color: #edf0ff; }
 .wizard-steps li.current .wizard-step-button > span { background: #424f8e; border-color: #8193d5; }
 .wizard-steps li.done .wizard-step-button > span { background: #19332f; color: #a3d9c5; border-color: #3d6157; }

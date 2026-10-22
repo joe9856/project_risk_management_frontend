@@ -28,6 +28,9 @@ export function userMessage(message, fallback) {
     'Service unavailable. Please try again.': 'ระบบยังไม่พร้อมใช้งาน กรุณารอสักครู่แล้วลองอีกครั้ง',
     'Too many requests. Please try again later.': 'ลองหลายครั้งเกินไป กรุณารอสักครู่ก่อนลองใหม่',
     'Authentication is not configured.': 'ระบบเข้าสู่ระบบยังไม่พร้อมใช้งาน กรุณาลองภายหลัง',
+    'Invalid or expired token.': 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง',
+    'Access denied. No token provided.': 'กรุณาเข้าสู่ระบบอีกครั้งเพื่อใช้งานต่อ',
+    'Account unavailable.': 'ไม่สามารถใช้บัญชีนี้ได้ กรุณาเข้าสู่ระบบอีกครั้ง',
   };
   return messages[message] || message || fallback;
 }

@@ -3,7 +3,8 @@
  * ตัวกลางเชื่อมต่อกับ Node.js + Express Backend
  */
 
-const API_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
+const API_URL = (import.meta.env?.VITE_API_URL || '/api').replace(/\/$/, '');
+export const SESSION_EXPIRED_EVENT = 'risk:session-expired';
 
 const getHeaders = () => {
     const token = localStorage.getItem('token');
@@ -11,6 +12,19 @@ const getHeaders = () => {
         'Content-Type': 'application/json',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
+};
+
+// Only protected requests can expire a session. A late response from an old
+// token must not sign out an account that has since logged in again.
+const authenticatedRequest = async (path, options = {}) => {
+    const headers = getHeaders();
+    const response = await fetch(`${API_URL}${path}`, { ...options, headers });
+    const currentToken = localStorage.getItem('token');
+    const requestToken = headers.Authorization;
+    if (response.status === 401 && requestToken === (currentToken ? `Bearer ${currentToken}` : undefined)) {
+        window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    }
+    return response.json();
 };
 
 export const login = async (email, password) => {
@@ -32,59 +46,59 @@ export const register = async (name, email, password) => {
 };
 
 export const saveRisk = async (riskData) => {
-    const response = await fetch(`${API_URL}/risks`, {
+    return authenticatedRequest('/risks', {
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify(riskData)
     });
-    return response.json();
 };
 
 export const getActivities = async () => {
-    const response = await fetch(`${API_URL}/activities`, {
-        headers: getHeaders()
-    });
-    return response.json();
+    return authenticatedRequest('/activities');
+};
+
+// Dashboard totals must include saved assessments from every page, rather than
+// treating the first page of activity logs as the assessment database.
+export const getRiskAssessments = async ({ signal } = {}) => {
+    const data = [];
+    let page = 1;
+    let pages = 1;
+    do {
+        const result = await authenticatedRequest(`/risks?limit=100&page=${page}`, { signal });
+        if (!result.success) return result;
+        data.push(...result.data);
+        pages = result.pagination?.pages ?? 1;
+        page++;
+    } while (page <= pages);
+    return { success: true, data };
 };
 
 export const getAdminUsers = async () => {
-    const response = await fetch(`${API_URL}/admin/users`, {
-        headers: getHeaders()
-    });
-    return response.json();
+    return authenticatedRequest('/admin/users');
 };
 
 export const createAdminUser = async (data) => {
-    const response = await fetch(`${API_URL}/admin/users`, {
+    return authenticatedRequest('/admin/users', {
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify(data)
     });
-    return response.json();
 };
 
 export const updateAdminUser = async (id, data) => {
-    const response = await fetch(`${API_URL}/admin/users/${id}`, {
+    return authenticatedRequest(`/admin/users/${id}`, {
         method: 'PUT',
-        headers: getHeaders(),
         body: JSON.stringify(data)
     });
-    return response.json();
 };
 
 export const deleteAdminUser = async (id) => {
-    const response = await fetch(`${API_URL}/admin/users/${id}`, {
+    return authenticatedRequest(`/admin/users/${id}`, {
         method: 'DELETE',
-        headers: getHeaders()
     });
-    return response.json();
 };
 
 export const getAIAnalysis = async (data) => {
-    const response = await fetch(`${API_URL}/ai/analyze`, {
+    return authenticatedRequest('/ai/analyze', {
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify(data)
     });
-    return response.json();
 };

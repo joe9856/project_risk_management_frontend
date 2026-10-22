@@ -8,7 +8,7 @@ import RiskMatrix from "./RiskMatrix";
 import RiskHome, { SiteHeader } from './RiskHome';
 import RiskTreatment from './RiskTreatment';
 import RiskDashboard from './RiskDashboard';
-import { saveRisk, getAIAnalysis } from "./api";
+import { saveRisk, getAIAnalysis, SESSION_EXPIRED_EVENT } from "./api";
 // import { thaiFontBase64 } from "./thaiFont"; // ❌ ไม่ต้องใช้แบบยาวๆ แล้ว
 import { Bar } from "react-chartjs-2";
 import {
@@ -84,6 +84,8 @@ export default function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [clearRequest, setClearRequest] = useState(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const sessionUserId = useRef(null);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
@@ -93,6 +95,23 @@ export default function App() {
       catch { localStorage.removeItem('user'); localStorage.removeItem('token'); }
     }
   }, []);
+
+  useEffect(() => {
+    const expireSession = () => {
+      sessionUserId.current = user?.id ?? sessionUserId.current;
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setSessionExpired(true);
+      setIsLoggedIn(false);
+      setUser(null);
+      setCurrentPage('login');
+      setClearRequest(null);
+      setToasts([]);
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, expireSession);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, expireSession);
+  }, [user]);
 
   // ฟังก์ชันเพิ่ม Toast
   const addToast = (title, message, type = 'info') => {
@@ -250,6 +269,8 @@ export default function App() {
     if (Object.keys(answered).length && !window.confirm('มีการประเมินที่ยังไม่บันทึก ต้องการออกจากระบบและล้างแบบร่าง?')) return;
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    setSessionExpired(false);
+    sessionUserId.current = null;
     resetAllScores();
     setCurrentView('home');
     setCurrentPage('home');
@@ -259,8 +280,13 @@ export default function App() {
   };
 
   const handleLoginSuccess = (userData) => {
+    // Keep the in-memory assessment only when the same account signs back in.
+    const differentAccount = sessionUserId.current !== null && sessionUserId.current !== userData.id;
+    if (differentAccount) resetAllScores();
+    sessionUserId.current = null;
+    setSessionExpired(false);
     setUser(userData);
-    setCurrentView(view => view === 'home' ? 'dashboard' : view);
+    setCurrentView(view => differentAccount || view === 'home' ? 'dashboard' : view);
     setIsLoggedIn(true);
   };
 
@@ -450,7 +476,7 @@ export default function App() {
   }
   if (!isLoggedIn) {
     return <div className="reference-auth"><button className="text-button auth-home-return" onClick={() => setCurrentPage('home')}><Icon name="back" size={16}/> กลับหน้าแรก</button>{currentPage === 'login'
-      ? <Login onLoginSuccess={handleLoginSuccess} onGoToRegister={() => setCurrentPage('register')} />
+      ? <Login onLoginSuccess={handleLoginSuccess} onGoToRegister={() => setCurrentPage('register')} notice={sessionExpired ? `เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง${Object.keys(answered).length ? 'ด้วยบัญชีเดิมเพื่อทำต่อ คำตอบที่กรอกยังอยู่ในหน้านี้' : ''}` : ''} />
       : <Register onBackToLogin={() => setCurrentPage('login')} />}</div>;
   }
 

@@ -3,7 +3,7 @@ import { login } from './api';
 import AuthLayout from './AuthLayout';
 import { Icon, PasswordField, userMessage } from './UI';
 
-export default function Login({ onLoginSuccess, onGoToRegister }) {
+export default function Login({ onLoginSuccess, onGoToRegister, notice }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -30,6 +30,7 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
     <span className="eyebrow">ยินดีต้อนรับกลับมา</span>
     <h2>เข้าสู่พื้นที่ทำงานของคุณ</h2>
     <p className="auth-description">พร้อมประเมินและจัดการความเสี่ยงต่อจากเดิม</p>
+    {notice && <div className="form-notice" role="status"><Icon name="info"/><span>{notice}</span></div>}
     {error && <div className="form-notice error" role="alert"><Icon name="info"/><span>{error}</span></div>}
     <form onSubmit={handleSubmit} aria-busy={loading}>
       <div className="form-field"><label htmlFor="login-email">อีเมล</label><input id="login-email" name="email" type="email" autoComplete="username" inputMode="email" autoCapitalize="none" value={email} onChange={e => setEmail(e.target.value)} required disabled={loading} placeholder="you@example.com"/></div>
