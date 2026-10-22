@@ -6,6 +6,8 @@ import AdminUsers from "./AdminUsers";
 import { Dialog, Icon, userMessage } from "./UI";
 import RiskMatrix from "./RiskMatrix";
 import RiskHome, { SiteHeader } from './RiskHome';
+import RiskTreatment from './RiskTreatment';
+import RiskDashboard from './RiskDashboard';
 import { saveRisk, getAIAnalysis } from "./api";
 // import { thaiFontBase64 } from "./thaiFont"; // ❌ ไม่ต้องใช้แบบยาวๆ แล้ว
 import { Bar } from "react-chartjs-2";
@@ -458,7 +460,7 @@ export default function App() {
       {siteHeader}
       <div className="workspace-body">
         <main className={currentView === 'dashboard' && !resultsVisible ? "workspace-content assessment-screen" : "workspace-content"} id="main-content">
-          {currentView === 'history' ? <UserHistory user={user} addToast={addToast} onNewAssessment={() => setCurrentView('dashboard')}/> : currentView === 'admin-users' ? <AdminUsers addToast={addToast}/> : <>
+          {currentView === 'analytics' ? <RiskDashboard user={user} onNewAssessment={() => setCurrentView('dashboard')}/> : currentView === 'history' ? <UserHistory user={user} addToast={addToast} onNewAssessment={() => setCurrentView('dashboard')}/> : currentView === 'admin-users' ? <AdminUsers addToast={addToast}/> : <>
             <div className="page-heading wizard-page-heading">
               <div><span className="eyebrow">OWASP RISK ASSESSMENT</span><h1>{resultsVisible ? 'ผลการประเมินของคุณ' : 'ประเมินความเสี่ยง'}</h1><p>{resultsVisible ? 'ตรวจผลสรุป บันทึก หรือส่งออกรายงานได้จากหน้านี้' : 'เลือกคะแนนให้ครบ แล้วค่อยดูผลสรุป'}</p></div>
               <button className="button button-secondary reset-all" disabled={isSaving || isExporting || (!completed && !assessmentTitle)} onClick={() => requestClear('all')}><Icon name="reset" size={19}/> ล้างทั้งหมด</button>
@@ -471,7 +473,7 @@ export default function App() {
               <div className="score-strip-total"><span>คะแนนรวม</span><strong>{totalScore}<small> / 144</small></strong></div>
             </div>
             }
-            <div className={resultsVisible ? "assessment-layout results-layout" : "assessment-layout wizard-layout"}>
+            <div className={`assessment-layout${resultsVisible ? ' results-layout' : ' wizard-layout'}`}>
             {!resultsVisible && <aside className="wizard-progress" id="assessment-progress" aria-label="ขั้นตอนการประเมิน">
               <div className="wizard-progress-heading"><div><span>กำลังทำขั้นตอนที่</span><strong>{activeStep + 1}<small> / 4</small></strong><h2>{categories[activeStep].title}</h2></div><div className="wizard-count" aria-live="polite"><strong>{completed}<small> / 16</small></strong><span>ปัจจัยที่เลือกแล้ว</span></div></div>
               <ol className="wizard-steps" role="tablist" aria-label="หมวดการประเมิน">{categories.map((category, index) => <li role="presentation" key={category.id} className={index === activeStep ? 'current' : stepCounts[index] === 4 ? 'done' : ''}><button className="wizard-step-button" type="button" role="tab" id={'tab-' + category.id} aria-controls={'panel-' + category.id} aria-selected={activeStep === index} disabled={!canOpenStep(index)} tabIndex={activeStep === index ? 0 : -1} onClick={() => changeStep(index)} onKeyDown={event => handleStepKey(event, index)}><span>{stepCounts[index] === 4 && index !== activeStep ? <Icon name="check" size={23}/> : index + 1}</span><div><strong>{category.shortTitle || category.title}</strong><small>{index === activeStep ? 'กำลังทำ · ' : stepCounts[index] === 4 ? 'ครบแล้ว · ' : 'รอทำ · '}{stepCounts[index]}/4 ปัจจัย</small></div></button></li>)}</ol>
@@ -501,6 +503,7 @@ export default function App() {
                   {aiResponse ? <div className="ai-response"><p>{aiResponse.summary}</p><h3>แนวทางที่แนะนำ</h3><ul>{aiResponse.recommendations?.map((rec, index) => <li key={index}>{rec}</li>)}</ul>{aiResponse.insight && <p className="ai-insight">{aiResponse.insight}</p>}<button className="text-button" onClick={() => setAiResponse(null)}>ล้างผลวิเคราะห์ AI</button></div> : <button className="button button-secondary" onClick={handleAIAnalysis} disabled={!isComplete || isAnalyzing}>{isAnalyzing ? <><span className="spinner"/> กำลังวิเคราะห์</> : <><Icon name="spark" size={16}/> วิเคราะห์ด้วย AI</>}</button>}
                   <small className="field-hint">ผลวิเคราะห์เป็นข้อมูลประกอบการตัดสินใจ ควรตรวจสอบกับบริบทของงาน</small>
                 </section>
+                <RiskTreatment riskClass={riskResult.class} scores={scores} categories={categories} />
                 </>}
               </div>
               {resultsVisible && <aside className="assessment-summary" id="assessment-result" aria-label="สรุปผลการประเมิน">

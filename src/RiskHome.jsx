@@ -6,6 +6,7 @@ export function SiteHeader({ user, view = 'home', onNavigate, onLogin, onLogout 
     <nav className="site-navigation" aria-label="เมนูหลัก">
       <button aria-current={view === 'home' ? 'page' : undefined} onClick={() => onNavigate('home')}>ภาพรวม</button>
       <button aria-current={view === 'dashboard' ? 'page' : undefined} onClick={() => onNavigate('dashboard')}>ประเมินความเสี่ยง</button>
+      {user && <button aria-current={view === 'analytics' ? 'page' : undefined} onClick={() => onNavigate('analytics')}>Dashboard</button>}
       {user && <button aria-current={view === 'history' ? 'page' : undefined} onClick={() => onNavigate('history')}>ประวัติ</button>}
       {user?.role === 'admin' && <button aria-current={view === 'admin-users' ? 'page' : undefined} onClick={() => onNavigate('admin-users')}>ผู้ใช้งาน</button>}
     </nav>
