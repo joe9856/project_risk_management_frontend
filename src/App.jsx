@@ -414,14 +414,14 @@ export default function App() {
   const changeStep = (step) => {
     if (!canOpenStep(step)) return;
     setActiveStep(step);
-    document.getElementById('assessment-progress')?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    document.getElementById('main-content')?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   };
   const handleStepKey = (event, index) => {
-    if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
+    if (!['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();
     const available = categories.map((_, step) => step).filter(canOpenStep);
     const position = available.indexOf(index);
-    const next = event.key === 'Home' ? available[0] : event.key === 'End' ? available[available.length - 1] : available[(position + (event.key === 'ArrowRight' ? 1 : available.length - 1)) % available.length];
+    const next = event.key === 'Home' ? available[0] : event.key === 'End' ? available[available.length - 1] : available[(position + (['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : available.length - 1)) % available.length];
     setActiveStep(next);
     document.getElementById('tab-' + categories[next].id)?.focus();
   };
@@ -457,18 +457,12 @@ export default function App() {
       <a className="skip-link" href="#main-content">ข้ามไปเนื้อหา</a>
       {siteHeader}
       <div className="workspace-body">
-        <main className="workspace-content" id="main-content">
+        <main className={currentView === 'dashboard' && !resultsVisible ? "workspace-content assessment-screen" : "workspace-content"} id="main-content">
           {currentView === 'history' ? <UserHistory user={user} addToast={addToast} onNewAssessment={() => setCurrentView('dashboard')}/> : currentView === 'admin-users' ? <AdminUsers addToast={addToast}/> : <>
             <div className="page-heading wizard-page-heading">
-              <div><span className="eyebrow">OWASP RISK ASSESSMENT</span><h1>{resultsVisible ? 'ผลการประเมินของคุณ' : 'ประเมินความเสี่ยงทีละขั้นตอน'}</h1><p>{resultsVisible ? 'ตรวจผลสรุป บันทึก หรือส่งออกรายงานได้จากหน้านี้' : 'เลือกคะแนนให้ครบทั้ง 4 ขั้นตอน แล้วกดดูผลสรุปเมื่อพร้อม'}</p></div>
+              <div><span className="eyebrow">OWASP RISK ASSESSMENT</span><h1>{resultsVisible ? 'ผลการประเมินของคุณ' : 'ประเมินความเสี่ยง'}</h1><p>{resultsVisible ? 'ตรวจผลสรุป บันทึก หรือส่งออกรายงานได้จากหน้านี้' : 'เลือกคะแนนให้ครบ แล้วค่อยดูผลสรุป'}</p></div>
               <button className="button button-secondary reset-all" disabled={isSaving || isExporting || (!completed && !assessmentTitle)} onClick={() => requestClear('all')}><Icon name="reset" size={19}/> ล้างทั้งหมด</button>
             </div>
-            {!resultsVisible && <section className="wizard-progress" id="assessment-progress" aria-label="ขั้นตอนการประเมิน">
-              <div className="wizard-progress-heading"><div><span>กำลังทำขั้นตอนที่</span><strong>{activeStep + 1}<small> / 4</small></strong><h2>{categories[activeStep].title}</h2></div><div className="wizard-count" aria-live="polite"><strong>{completed}<small> / 16</small></strong><span>ปัจจัยที่เลือกแล้ว</span></div></div>
-              <ol className="wizard-steps" role="tablist" aria-label="หมวดการประเมิน">{categories.map((category, index) => <li role="presentation" key={category.id} className={index === activeStep ? 'current' : stepCounts[index] === 4 ? 'done' : ''}><button className="wizard-step-button" type="button" role="tab" id={'tab-' + category.id} aria-controls={'panel-' + category.id} aria-selected={activeStep === index} disabled={!canOpenStep(index)} tabIndex={activeStep === index ? 0 : -1} onClick={() => changeStep(index)} onKeyDown={event => handleStepKey(event, index)}><span>{stepCounts[index] === 4 && index !== activeStep ? <Icon name="check" size={23}/> : index + 1}</span><div><strong>{category.shortTitle || category.title}</strong><small>{index === activeStep ? 'กำลังทำ · ' : stepCounts[index] === 4 ? 'ครบแล้ว · ' : 'รอทำ · '}{stepCounts[index]}/4 ปัจจัย</small></div></button></li>)}</ol>
-              <div className="wizard-total-track" role="progressbar" aria-label="ความคืบหน้าทั้งหมด" aria-valuemin={0} aria-valuemax={16} aria-valuenow={completed}><span style={{ width: (completed / 16 * 100) + '%' }}/></div>
-              <p><Icon name="info" size={18}/> {isComplete ? 'เลือกครบแล้ว กด “ดูผลสรุปการประเมิน” เพื่อดูคะแนน กราฟ และคำแนะนำ' : 'ทำให้ครบทีละขั้นตอน คะแนนและผลสรุปจะแสดงหลังคุณกดดูผลเท่านั้น'}</p>
-            </section>}
             {resultsVisible && <div className="result-toolbar"><span><Icon name="check"/> ประเมินครบ 16 ปัจจัยแล้ว</span><button className="button button-secondary" disabled={isSaving || isExporting || isAnalyzing} onClick={editAssessment}><Icon name="back" size={18}/> กลับไปแก้ไขคำตอบ</button></div>}
             {resultsVisible && <div className="score-strip" aria-label="ภาพรวมคะแนน">
               <div><span className="score-strip-icon"><Icon name="file"/></span><div><span>ความคืบหน้า</span><strong>{completed}<small> / 16 ปัจจัย</small></strong></div></div>
@@ -478,11 +472,18 @@ export default function App() {
             </div>
             }
             <div className={resultsVisible ? "assessment-layout results-layout" : "assessment-layout wizard-layout"}>
+            {!resultsVisible && <aside className="wizard-progress" id="assessment-progress" aria-label="ขั้นตอนการประเมิน">
+              <div className="wizard-progress-heading"><div><span>กำลังทำขั้นตอนที่</span><strong>{activeStep + 1}<small> / 4</small></strong><h2>{categories[activeStep].title}</h2></div><div className="wizard-count" aria-live="polite"><strong>{completed}<small> / 16</small></strong><span>ปัจจัยที่เลือกแล้ว</span></div></div>
+              <ol className="wizard-steps" role="tablist" aria-label="หมวดการประเมิน">{categories.map((category, index) => <li role="presentation" key={category.id} className={index === activeStep ? 'current' : stepCounts[index] === 4 ? 'done' : ''}><button className="wizard-step-button" type="button" role="tab" id={'tab-' + category.id} aria-controls={'panel-' + category.id} aria-selected={activeStep === index} disabled={!canOpenStep(index)} tabIndex={activeStep === index ? 0 : -1} onClick={() => changeStep(index)} onKeyDown={event => handleStepKey(event, index)}><span>{stepCounts[index] === 4 && index !== activeStep ? <Icon name="check" size={23}/> : index + 1}</span><div><strong>{category.shortTitle || category.title}</strong><small>{index === activeStep ? 'กำลังทำ · ' : stepCounts[index] === 4 ? 'ครบแล้ว · ' : 'รอทำ · '}{stepCounts[index]}/4 ปัจจัย</small></div></button></li>)}</ol>
+              <div className="wizard-total-track" role="progressbar" aria-label="ความคืบหน้าทั้งหมด" aria-valuemin={0} aria-valuemax={16} aria-valuenow={completed}><span style={{ width: (completed / 16 * 100) + '%' }}/></div>
+              <p><Icon name="info" size={18}/> {isComplete ? 'เลือกครบแล้ว กด “ดูผลสรุปการประเมิน” เพื่อดูคะแนน กราฟ และคำแนะนำ' : 'ทำให้ครบทีละขั้นตอน คะแนนและผลสรุปจะแสดงหลังคุณกดดูผลเท่านั้น'}</p>
+            </aside>}
+
               <div className="assessment-main">
                 {!resultsVisible && <section className="panel assessment-panel" id="assessment-form" aria-labelledby="assessment-heading">
                   <div className="assessment-intro"><div><h2 id="assessment-heading">ขั้นตอนที่ {activeStep + 1}: {categories[activeStep].title}</h2><p>เลือกคะแนนทั้ง 4 ช่องในขั้นตอนนี้ ตั้งแต่ 0 ถึง 9</p></div><span className="step-count">เลือกแล้ว {stepCounts[activeStep]} / 4</span></div>
                   {categories.map(category => <div key={category.id} hidden={categories[activeStep].id !== category.id} className="category-content" role="tabpanel" id={'panel-' + category.id} aria-labelledby={'tab-' + category.id}>
-                    <div className="category-heading"><div><span className="meta">{category.english}</span><h3>{category.title}</h3><p>{category.description}</p></div><button className="button button-secondary clear-category" disabled={!stepCounts[categories.indexOf(category)]} onClick={() => requestClear('category', category.id)} aria-label={'ล้างหมวด' + category.title}><Icon name="reset" size={17}/> ล้างหมวดนี้</button></div>
+                    <div className="category-heading"><div><p>{category.description}</p></div><button className="button button-secondary clear-category" disabled={!stepCounts[categories.indexOf(category)]} onClick={() => requestClear('category', category.id)} aria-label={'ล้างหมวด' + category.title}><Icon name="reset" size={17}/> ล้างหมวดนี้</button></div>
                     <div className="factor-list">{category.factors.map((factor, index) => {
                       const key = category.id + '.' + factor;
                       return <div className="factor-row" key={factor}><span className="factor-number">{String(index + 1).padStart(2, '0')}</span><div className="factor-description"><label htmlFor={key}>{factorTranslations[factor].split(' (')[0]}</label><small id={key + '-hint'}>{factorHints[factor]}</small></div><div className="factor-controls"><select className={answered[key] ? 'factor-select answered' : 'factor-select'} id={key} aria-describedby={key + '-hint'} value={answered[key] ? scores[category.id][factor] : ''} onChange={event => handleChange(event, category.id, factor)}><option value="" disabled>เลือกคะแนน</option>{scoreOptions.map(([value, label]) => <option value={value} key={value}>{value} — {label}</option>)}</select><button className="clear-factor" disabled={!answered[key]} onClick={() => requestClear('factor', category.id, factor)} aria-label={'ล้างช่อง' + factorTranslations[factor].split(' (')[0]}><Icon name="reset" size={16}/> ล้างช่องนี้</button></div></div>;
