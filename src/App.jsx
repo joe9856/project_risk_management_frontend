@@ -1,9 +1,9 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import Login from "./Login";
 import Register from "./Register";
 import UserHistory from "./UserHistory";
 import AdminUsers from "./AdminUsers";
-import { Icon, userMessage } from "./UI";
+import { Dialog, Icon, userMessage } from "./UI";
 import RiskMatrix from "./RiskMatrix";
 import RiskHome, { SiteHeader } from './RiskHome';
 import { saveRisk, getAIAnalysis } from "./api";
@@ -80,6 +80,8 @@ export default function App() {
   const [answered, setAnswered] = useState({});
   const [assessmentTitle, setAssessmentTitle] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [clearRequest, setClearRequest] = useState(null);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
@@ -120,6 +122,8 @@ export default function App() {
 
   // ฟังก์ชันรีเซ็ตค่าทั้งหมด
   const resetAllScores = () => {
+    setShowResults(false);
+    window.scrollTo({ top: 0, behavior: 'instant' });
     setAnswered({});
     setActiveStep(0);
     setAssessmentTitle('');
@@ -134,6 +138,7 @@ export default function App() {
 
   // ฟังก์ชันรีเซ็ตรายหมวดหมู่
   const resetCategoryScore = (category) => {
+    setShowResults(false);
     setAnswered(prev => Object.fromEntries(Object.entries(prev).filter(([key]) => !key.startsWith(category + '.'))));
     setAiResponse(null);
     const defaultValues = {
@@ -146,7 +151,7 @@ export default function App() {
     addToast("รีเซ็ตแล้ว", `เริ่มคำนวณใหม่เฉพาะส่วนได้เลยครับ`, "info");
   };
 
-  const chartData = useMemo(() => ({
+  const chartData = {
     labels: [
       "ปัจจัยจากคุกคาม (Threat Agent)",
       "ช่องโหว่ (Vulnerability)",
@@ -178,7 +183,7 @@ export default function App() {
         borderRadius: 8,
       },
     ],
-  }), [scores]);
+  };
 
   // ฟังก์ชันส่งออก PDF
   // ฟังก์ชันบันทึกข้อมูลเข้าฐานข้อมูล
@@ -206,7 +211,7 @@ export default function App() {
       } else {
         addToast("บันทึกไม่สำเร็จ", userMessage(result.message, "เกิดข้อผิดพลาดในการบันทึก"), "error");
       }
-    } catch (error) {
+    } catch {
       addToast("เชื่อมต่อไม่ได้", "กรุณาลองบันทึกอีกครั้ง ข้อมูลที่กรอกยังอยู่ครบ", "error");
     } finally { setIsSaving(false); }
   };
@@ -232,7 +237,7 @@ export default function App() {
       } else {
         addToast("วิเคราะห์ไม่สำเร็จ", userMessage(result.message, "เกิดข้อผิดพลาดในการวิเคราะห์"), "error");
       }
-    } catch (error) {
+    } catch {
       addToast("Connection Error", "ไม่สามารถเชื่อมต่อกับระบบ AI ได้", "error");
     } finally {
       setIsAnalyzing(false);
@@ -367,6 +372,7 @@ export default function App() {
   };
 
   const handleChange = (event, category, factor) => {
+    setShowResults(false);
     const value = parseInt(event.target.value);
     setAnswered(prev => ({ ...prev, [category + '.' + factor]: true }));
     setAiResponse(null);
@@ -385,9 +391,48 @@ export default function App() {
   const completed = Object.keys(answered).length;
   const totalScore = categories.reduce((sum, item) => sum + calculateTotal(item.id), 0);
   const isComplete = completed === 16;
+  const resultsVisible = showResults && isComplete;
+  const stepCounts = categories.map(category => category.factors.filter(factor => answered[category.id + '.' + factor]).length);
+  const currentStepComplete = stepCounts[activeStep] === 4;
+  const canOpenStep = (index) => categories.slice(0, index).every((_, step) => stepCounts[step] === 4);
+  const requestClear = (scope, category, factor) => {
+    setClearRequest({ scope, category, factor });
+  };
+  const confirmClear = () => {
+    const { scope, category, factor } = clearRequest;
+    if (scope === 'all') resetAllScores();
+    else if (scope === 'category') resetCategoryScore(category);
+    else {
+      const key = category + '.' + factor;
+      setAnswered(prev => Object.fromEntries(Object.entries(prev).filter(([name]) => name !== key)));
+      setScores(prev => ({ ...prev, [category]: { ...prev[category], [factor]: 0 } }));
+      setShowResults(false);
+      setAiResponse(null);
+    }
+    setClearRequest(null);
+  };
   const changeStep = (step) => {
+    if (!canOpenStep(step)) return;
     setActiveStep(step);
-    document.getElementById('assessment-form')?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    document.getElementById('assessment-progress')?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+  };
+  const handleStepKey = (event, index) => {
+    if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const available = categories.map((_, step) => step).filter(canOpenStep);
+    const position = available.indexOf(index);
+    const next = event.key === 'Home' ? available[0] : event.key === 'End' ? available[available.length - 1] : available[(position + (event.key === 'ArrowRight' ? 1 : available.length - 1)) % available.length];
+    setActiveStep(next);
+    document.getElementById('tab-' + categories[next].id)?.focus();
+  };
+  const revealResults = () => {
+    if (!isComplete) return;
+    setShowResults(true);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+  const editAssessment = () => {
+    setShowResults(false);
+    window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
   const navigate = (view) => {
@@ -414,42 +459,38 @@ export default function App() {
       <div className="workspace-body">
         <main className="workspace-content" id="main-content">
           {currentView === 'history' ? <UserHistory user={user} addToast={addToast} onNewAssessment={() => setCurrentView('dashboard')}/> : currentView === 'admin-users' ? <AdminUsers addToast={addToast}/> : <>
-            <div className="page-heading">
-              <div><span className="eyebrow">OWASP RISK ASSESSMENT</span><h1>ประเมินความเสี่ยง</h1><p>ทำความเข้าใจความเสี่ยงทีละส่วน แล้ววางแผนรับมืออย่างมั่นใจ</p></div>
-              <button className="button button-secondary reset-all" onClick={() => { if (!completed || window.confirm('ล้างคะแนนที่กรอกทั้งหมดและเริ่มการประเมินใหม่?')) resetAllScores(); }}><Icon name="reset" size={17}/> เริ่มใหม่</button>
+            <div className="page-heading wizard-page-heading">
+              <div><span className="eyebrow">OWASP RISK ASSESSMENT</span><h1>{resultsVisible ? 'ผลการประเมินของคุณ' : 'ประเมินความเสี่ยงทีละขั้นตอน'}</h1><p>{resultsVisible ? 'ตรวจผลสรุป บันทึก หรือส่งออกรายงานได้จากหน้านี้' : 'เลือกคะแนนให้ครบทั้ง 4 ขั้นตอน แล้วกดดูผลสรุปเมื่อพร้อม'}</p></div>
+              <button className="button button-secondary reset-all" disabled={isSaving || isExporting || (!completed && !assessmentTitle)} onClick={() => requestClear('all')}><Icon name="reset" size={19}/> ล้างทั้งหมด</button>
             </div>
-            <div className="score-strip" aria-label="ภาพรวมคะแนน">
+            {!resultsVisible && <section className="wizard-progress" id="assessment-progress" aria-label="ขั้นตอนการประเมิน">
+              <div className="wizard-progress-heading"><div><span>กำลังทำขั้นตอนที่</span><strong>{activeStep + 1}<small> / 4</small></strong><h2>{categories[activeStep].title}</h2></div><div className="wizard-count" aria-live="polite"><strong>{completed}<small> / 16</small></strong><span>ปัจจัยที่เลือกแล้ว</span></div></div>
+              <ol className="wizard-steps" role="tablist" aria-label="หมวดการประเมิน">{categories.map((category, index) => <li role="presentation" key={category.id} className={index === activeStep ? 'current' : stepCounts[index] === 4 ? 'done' : ''}><button className="wizard-step-button" type="button" role="tab" id={'tab-' + category.id} aria-controls={'panel-' + category.id} aria-selected={activeStep === index} disabled={!canOpenStep(index)} tabIndex={activeStep === index ? 0 : -1} onClick={() => changeStep(index)} onKeyDown={event => handleStepKey(event, index)}><span>{stepCounts[index] === 4 && index !== activeStep ? <Icon name="check" size={23}/> : index + 1}</span><div><strong>{category.shortTitle || category.title}</strong><small>{index === activeStep ? 'กำลังทำ · ' : stepCounts[index] === 4 ? 'ครบแล้ว · ' : 'รอทำ · '}{stepCounts[index]}/4 ปัจจัย</small></div></button></li>)}</ol>
+              <div className="wizard-total-track" role="progressbar" aria-label="ความคืบหน้าทั้งหมด" aria-valuemin={0} aria-valuemax={16} aria-valuenow={completed}><span style={{ width: (completed / 16 * 100) + '%' }}/></div>
+              <p><Icon name="info" size={18}/> {isComplete ? 'เลือกครบแล้ว กด “ดูผลสรุปการประเมิน” เพื่อดูคะแนน กราฟ และคำแนะนำ' : 'ทำให้ครบทีละขั้นตอน คะแนนและผลสรุปจะแสดงหลังคุณกดดูผลเท่านั้น'}</p>
+            </section>}
+            {resultsVisible && <div className="result-toolbar"><span><Icon name="check"/> ประเมินครบ 16 ปัจจัยแล้ว</span><button className="button button-secondary" disabled={isSaving || isExporting || isAnalyzing} onClick={editAssessment}><Icon name="back" size={18}/> กลับไปแก้ไขคำตอบ</button></div>}
+            {resultsVisible && <div className="score-strip" aria-label="ภาพรวมคะแนน">
               <div><span className="score-strip-icon"><Icon name="file"/></span><div><span>ความคืบหน้า</span><strong>{completed}<small> / 16 ปัจจัย</small></strong></div></div>
               <div><span>คะแนนโอกาสเกิด</span><strong>{calculateTotal('threatAgent') + calculateTotal('vulnerability')}<small> / 72</small></strong></div>
               <div><span>คะแนนผลกระทบ</span><strong>{calculateTotal('technicalImpact') + calculateTotal('businessImpact')}<small> / 72</small></strong></div>
               <div className="score-strip-total"><span>คะแนนรวม</span><strong>{totalScore}<small> / 144</small></strong></div>
             </div>
-            <div className="assessment-layout">
+            }
+            <div className={resultsVisible ? "assessment-layout results-layout" : "assessment-layout wizard-layout"}>
               <div className="assessment-main">
-                <section className="panel assessment-panel" id="assessment-form" aria-labelledby="assessment-heading">
-                  <div className="assessment-intro"><div><h2 id="assessment-heading">แบบประเมินของคุณ</h2><p>เลือกคะแนนตามสถานการณ์จริง ตั้งแต่ 0 ถึง 9</p></div><span className="step-count">ส่วนที่ {activeStep + 1} / 4</span></div>
-                  <div className="progress-track" role="progressbar" aria-label="ปัจจัยที่ประเมินแล้ว" aria-valuemin={0} aria-valuemax={16} aria-valuenow={completed}><span style={{ width: (completed / 16 * 100) + '%' }}/></div>
-                  <div className="category-tabs" role="tablist" aria-label="หมวดการประเมิน">
-                    {categories.map((item, index) => {
-                      const count = item.factors.filter(f => answered[item.id + '.' + f]).length;
-                      return <button key={item.id} type="button" role="tab" id={'tab-' + item.id} aria-controls={'panel-' + item.id} aria-selected={activeStep === index} tabIndex={activeStep === index ? 0 : -1} className={activeStep === index ? 'category-tab active' : 'category-tab'} onClick={() => setActiveStep(index)} onKeyDown={event => {
-                        if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
-                        event.preventDefault();
-                        const next = event.key === 'Home' ? 0 : event.key === 'End' ? 3 : (index + (event.key === 'ArrowRight' ? 1 : 3)) % 4;
-                        setActiveStep(next);
-                        document.getElementById('tab-' + categories[next].id)?.focus();
-                      }}><span className={count === 4 ? 'tab-number complete' : 'tab-number'}>{count === 4 ? <Icon name="check" size={13}/> : '0' + (index + 1)}</span><span>{item.shortTitle || item.title}<small>{count}/4 ปัจจัย</small></span></button>;
-                    })}
-                  </div>
+                {!resultsVisible && <section className="panel assessment-panel" id="assessment-form" aria-labelledby="assessment-heading">
+                  <div className="assessment-intro"><div><h2 id="assessment-heading">ขั้นตอนที่ {activeStep + 1}: {categories[activeStep].title}</h2><p>เลือกคะแนนทั้ง 4 ช่องในขั้นตอนนี้ ตั้งแต่ 0 ถึง 9</p></div><span className="step-count">เลือกแล้ว {stepCounts[activeStep]} / 4</span></div>
                   {categories.map(category => <div key={category.id} hidden={categories[activeStep].id !== category.id} className="category-content" role="tabpanel" id={'panel-' + category.id} aria-labelledby={'tab-' + category.id}>
-                    <div className="category-heading"><div><span className="meta">{category.english}</span><h3>{category.title}</h3><p>{category.description}</p></div><button className="icon-button" onClick={() => resetCategoryScore(category.id)} aria-label={'ล้างคะแนนหมวด' + category.title} title="ล้างคะแนนหมวดนี้"><Icon name="reset" size={17}/></button></div>
+                    <div className="category-heading"><div><span className="meta">{category.english}</span><h3>{category.title}</h3><p>{category.description}</p></div><button className="button button-secondary clear-category" disabled={!stepCounts[categories.indexOf(category)]} onClick={() => requestClear('category', category.id)} aria-label={'ล้างหมวด' + category.title}><Icon name="reset" size={17}/> ล้างหมวดนี้</button></div>
                     <div className="factor-list">{category.factors.map((factor, index) => {
                       const key = category.id + '.' + factor;
-                      return <div className="factor-row" key={factor}><span className="factor-number">{String(index + 1).padStart(2, '0')}</span><div className="factor-description"><label htmlFor={key}>{factorTranslations[factor].split(' (')[0]}</label><small id={key + '-hint'}>{factorHints[factor]}</small></div><select className={answered[key] ? 'factor-select answered' : 'factor-select'} id={key} aria-describedby={key + '-hint'} value={answered[key] ? scores[category.id][factor] : ''} onChange={event => handleChange(event, category.id, factor)}><option value="" disabled>เลือกคะแนน</option>{scoreOptions.map(([value, label]) => <option value={value} key={value}>{value} — {label}</option>)}</select></div>;
+                      return <div className="factor-row" key={factor}><span className="factor-number">{String(index + 1).padStart(2, '0')}</span><div className="factor-description"><label htmlFor={key}>{factorTranslations[factor].split(' (')[0]}</label><small id={key + '-hint'}>{factorHints[factor]}</small></div><div className="factor-controls"><select className={answered[key] ? 'factor-select answered' : 'factor-select'} id={key} aria-describedby={key + '-hint'} value={answered[key] ? scores[category.id][factor] : ''} onChange={event => handleChange(event, category.id, factor)}><option value="" disabled>เลือกคะแนน</option>{scoreOptions.map(([value, label]) => <option value={value} key={value}>{value} — {label}</option>)}</select><button className="clear-factor" disabled={!answered[key]} onClick={() => requestClear('factor', category.id, factor)} aria-label={'ล้างช่อง' + factorTranslations[factor].split(' (')[0]}><Icon name="reset" size={16}/> ล้างช่องนี้</button></div></div>;
                     })}</div>
                   </div>)}
-                  <div className="step-actions"><span className="meta">ข้อมูลที่เลือกจะอยู่ครบเมื่อเปลี่ยนหมวด</span><div><button className="button button-secondary" disabled={activeStep === 0} onClick={() => changeStep(activeStep - 1)}><Icon name="back" size={16}/> ย้อนกลับ</button>{activeStep < 3 ? <button className="button button-primary" onClick={() => changeStep(activeStep + 1)}>หมวดถัดไป <Icon name="arrow" size={16}/></button> : <button className="button button-primary" onClick={() => document.getElementById('assessment-result')?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center' })}>ดูสรุปผล <Icon name="arrow" size={16}/></button>}</div></div>
-                </section>
+                  <div className="step-actions"><span className="meta" aria-live="polite">{currentStepComplete ? (activeStep === 3 ? 'ครบทั้ง 4 ขั้นตอนแล้ว พร้อมดูผลสรุป' : 'ขั้นตอนนี้ครบแล้ว ไปขั้นตอนถัดไปได้เลย') : 'เลือกอีก ' + (4 - stepCounts[activeStep]) + ' ช่อง เพื่อไปขั้นตอนถัดไป'}</span><div><button className="button button-secondary" disabled={activeStep === 0} onClick={() => changeStep(activeStep - 1)}><Icon name="back" size={18}/> ย้อนกลับ</button>{activeStep < 3 ? <button className="button button-primary" disabled={!currentStepComplete} onClick={() => changeStep(activeStep + 1)}>ไปขั้นตอนที่ {activeStep + 2} <Icon name="arrow" size={18}/></button> : <button className="button button-primary" disabled={!isComplete} onClick={revealResults}>ดูผลสรุปการประเมิน <Icon name="arrow" size={18}/></button>}</div></div>
+                </section>}
+                {resultsVisible && <>
                 <section className="panel chart-panel" aria-labelledby="chart-heading">
                   <div className="panel-heading"><div><h2 id="chart-heading">ภาพรวมทั้ง 4 หมวด</h2><p>เปรียบเทียบคะแนนเพื่อดูว่าควรให้ความสำคัญกับส่วนใด</p></div><span className="meta">สูงสุด 36 / หมวด</span></div>
                   <div className="assessment-chart" ref={chartRef}><Bar data={{...chartData, labels: categories.map(item => item.title), datasets: chartData.datasets.map(dataset => ({ ...dataset, backgroundColor: ['#7378ff', '#9696ff', '#a9b6ff', '#c9d0ff'], borderWidth: 0, barPercentage: .6 }))}} aria-label="กราฟคะแนนความเสี่ยงทั้งสี่หมวด" role="img" options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 36, ticks: { stepSize: 9, color: '#a6afcb' }, grid: { color: '#2b3152' }, border: { display: false } }, x: { grid: { display: false }, ticks: { font: { family: 'Sarabun', size: 11 }, color: '#a6afcb' }, border: { display: false } } } }}/></div>
@@ -459,8 +500,9 @@ export default function App() {
                   {aiResponse ? <div className="ai-response"><p>{aiResponse.summary}</p><h3>แนวทางที่แนะนำ</h3><ul>{aiResponse.recommendations?.map((rec, index) => <li key={index}>{rec}</li>)}</ul>{aiResponse.insight && <p className="ai-insight">{aiResponse.insight}</p>}<button className="text-button" onClick={() => setAiResponse(null)}>ล้างผลวิเคราะห์ AI</button></div> : <button className="button button-secondary" onClick={handleAIAnalysis} disabled={!isComplete || isAnalyzing}>{isAnalyzing ? <><span className="spinner"/> กำลังวิเคราะห์</> : <><Icon name="spark" size={16}/> วิเคราะห์ด้วย AI</>}</button>}
                   <small className="field-hint">ผลวิเคราะห์เป็นข้อมูลประกอบการตัดสินใจ ควรตรวจสอบกับบริบทของงาน</small>
                 </section>
+                </>}
               </div>
-              <aside className="assessment-summary" id="assessment-result" aria-label="สรุปผลการประเมิน">
+              {resultsVisible && <aside className="assessment-summary" id="assessment-result" aria-label="สรุปผลการประเมิน">
                 <section className="panel summary-panel">
                   <div className="panel-heading"><h2>สรุปผลการประเมิน</h2><span className={isComplete ? 'status-label complete' : 'status-label'}>{isComplete ? 'ครบทุกปัจจัย' : 'แบบร่าง'}</span></div>
                   <div className="total-score"><span>คะแนนรวมจาก 16 ปัจจัย</span><strong>{completed ? totalScore : '—'}<small>/ 144</small></strong><span className={completed ? 'risk-status ' + riskResult.class : 'risk-status unassessed'}>{completed ? riskResult.label.split(' (')[0] : 'รอการประเมิน'}</span></div>
@@ -474,12 +516,20 @@ export default function App() {
                     <small>เมื่อบันทึกแล้ว ดูผลได้ในประวัติการประเมิน</small>
                   </div>
                 </section>
-              </aside>
+              </aside>}
             </div>
             <footer className="workspace-footer"><span>Risk Management Workspace</span><span>ประเมินความเสี่ยงอย่างเป็นขั้นตอน</span></footer>
           </>}
         </main>
       </div>
+      {clearRequest && <Dialog titleId="clear-dialog-title" onClose={() => setClearRequest(null)}>
+        <div className="clear-dialog"><span className="clear-dialog-icon"><Icon name="reset" size={29}/></span>
+          <h2 id="clear-dialog-title">{clearRequest.scope === 'all' ? 'ล้างคำตอบทั้งหมด?' : clearRequest.scope === 'category' ? 'ล้างคำตอบในหมวดนี้?' : 'ล้างคำตอบช่องนี้?'}</h2>
+          <p>{clearRequest.scope === 'all' ? 'คำตอบทั้ง 16 ปัจจัย ชื่อการประเมิน และผลวิเคราะห์ในแบบร่างนี้จะถูกล้าง แล้วกลับไปเริ่มขั้นตอนที่ 1' : clearRequest.scope === 'category' ? 'ล้างเฉพาะหมวด “' + categories.find(item => item.id === clearRequest.category).title + '” ทั้ง 4 ช่อง คำตอบหมวดอื่นยังอยู่ครบ' : 'ล้างเฉพาะ “' + factorTranslations[clearRequest.factor].split(' (')[0] + '” คำตอบช่องอื่นยังอยู่ครบ'}</p>
+          <small>ผลการประเมินที่บันทึกในประวัติแล้วจะยังอยู่</small>
+          <div className="modal-actions"><button className="button button-secondary" onClick={() => setClearRequest(null)}>ยกเลิก</button><button className="button button-danger" onClick={confirmClear}>ยืนยันการล้าง</button></div>
+        </div>
+      </Dialog>}
       <div className="toast-container" aria-live="polite" aria-atomic="false">{toasts.map(toast => <div key={toast.id} className={'toast-item ' + toast.type} role={toast.type === 'error' ? 'alert' : 'status'}><span className="toast-icon"><Icon name={toast.type === 'success' ? 'check' : 'info'}/></span><div className="toast-content"><strong>{toast.title}</strong><p>{toast.message}</p></div><button className="icon-button" aria-label="ปิดการแจ้งเตือน" onClick={() => setToasts(prev => prev.filter(item => item.id !== toast.id))}><Icon name="close" size={16}/></button></div>)}</div>
     </div>
   );
